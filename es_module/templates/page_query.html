@@ -1,0 +1,29 @@
+<!doctype html>
+
+<body bgcolor="white">
+<title>COVID-19 Corpus Search</title>
+<style>
+dd {
+    width:100%
+}
+</style>
+<div style="width:100%">
+<h3 style="background-color:black;color:lightgrey"> COVID-19 Corpus Search </h3>
+
+<h1>COVID-19 Corpus Search Engine</h1>
+
+
+<form action="/results" name="search" method="post">
+    <dl>
+        <p>Free text search | Search Type <select name="search_type">
+            <option value="Disjunctive">Disjunctive</option>
+            <option value="Conjunctive">Conjunctive</option>
+        </select>
+         <input type="text" style="width:300px" name="query"></p>
+        <p> Search for authors (names separated by ;): <input type="text" style="width:300px" name="authors"></p>
+
+    <input type="submit" value="Search">
+    </dl>
+</form>
+</div>
+</body>
