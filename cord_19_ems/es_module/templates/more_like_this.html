@@ -37,7 +37,6 @@ p.cannotfind {
     clear:left;
 }
 </style>
-
 <div class="searchbox">
 <h3 class="header"> COVID-19 Corpus Search </h3>
 <form action="/results" name="search" method="post">
@@ -52,8 +51,7 @@ p.cannotfind {
     <input type="submit" value="Search">
     </dl>
 </form>
-
-<p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
+<p style="font-size:14px">Found {{res_num}} documents with shared citations. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
 {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
     <input style="width:60px;float:left;clear:right" type="submit" value="Previous">
@@ -79,7 +77,7 @@ p.cannotfind {
     {% if res_num %}
         {% for res in results %}
         <ul>
-            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    score: {{results[res]['score']}} </pre>
+            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    Percent citation overlap: {{ '%0.2f'|format((results[res]['overlap'] * 100)|float) }} % </pre>
             {% if results[res]['abstract'] == "" %}
                 <p class="results">{{results[res]['body'] | safe}}</p>
             {% else %}
