@@ -1,4 +1,5 @@
 .idea/
 .DS_Store
 .git
-*.pyc
+*.
+cord_19_ems.egg-info/
