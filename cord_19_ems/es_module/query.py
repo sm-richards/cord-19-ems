@@ -37,7 +37,7 @@ def results(page):
         article = Article.get(id=doc_id, index='covid_index')
         citations = article['citations']
         q = Q('bool',
-              should= [{"match": {'citations.title': citation['title']} for citation in citations}],
+              should= [{"match_phrase": {'citations.title': citation['title']} for citation in citations}],
                           minimum_should_match=1)
         s = s.query("nested", path="citations", query=q)
         start = 0 + (page - 1) * 10
@@ -46,28 +46,29 @@ def results(page):
         # execute search and return results in specified range.
         response = s[start:end].execute()
 
+        # keep track of citations in reference article to count overlap
+        titles = set([citation['title'] for citation in citations])
         # insert data into response
         results = {}
         for hit in response.hits:
-            print(hit.meta)
             result = {}
             result['score'] = hit.meta.score
 
             if 'highlight' in hit.meta:
-                if 'title' in hit.meta.highlight:
-                    result['title'] = hit.meta.highlight.title[0]
-                else:
-                    result['title'] = hit.title
-
-                if 'abstract' in hit.meta.highlight:
-                    result['abstract'] = hit.meta.highlight.abstract[0]
-                else:
-                    result['abstract'] = hit.abstract
-            else:
-                result['title'] = hit.title
-                result['abstract'] = hit.abstract
+                print(hit.meta.highlight)
+            result['title'] = hit.title
+            result['abstract'] = hit.abstract
             result['body'] = hit.body
-            results[hit.meta.id] = result
+            result['citations']= hit.citations
+            # calculate set union of citations between article and reference article:
+            # use this to display on the page
+            hit_citations = set([citation['title'] for citation in result['citations']])
+            overlap = len(titles.intersection(hit_citations)) / len(titles)
+            result['overlap'] = overlap
+
+            # don't include the document itself in the results
+            if hit.meta.id !=doc_id:
+                results[hit.meta.id] = result
 
         # make the result list available globally
         gresults = results
