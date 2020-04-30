@@ -29,6 +29,53 @@ def results(page):
 
     if type(page) is not int:
         page = int(page.encode('utf-8'))
+    if 'title' in request.form:
+
+        # then this is a more_like_this query.
+        doc_id = int(request.form['query'])
+        s = Search(index='covid_index')
+        article = Article.get(id=doc_id, index='covid_index')
+        citations = article['citations']
+        q = Q('bool',
+              should= [{"match": {'citations.title': citation['title']} for citation in citations}],
+                          minimum_should_match=1)
+        s = s.query("nested", path="citations", query=q)
+        start = 0 + (page - 1) * 10
+        end = 10 + (page - 1) * 10
+
+        # execute search and return results in specified range.
+        response = s[start:end].execute()
+
+        # insert data into response
+        results = {}
+        for hit in response.hits:
+            print(hit.meta)
+            result = {}
+            result['score'] = hit.meta.score
+
+            if 'highlight' in hit.meta:
+                if 'title' in hit.meta.highlight:
+                    result['title'] = hit.meta.highlight.title[0]
+                else:
+                    result['title'] = hit.title
+
+                if 'abstract' in hit.meta.highlight:
+                    result['abstract'] = hit.meta.highlight.abstract[0]
+                else:
+                    result['abstract'] = hit.abstract
+            else:
+                result['title'] = hit.title
+                result['abstract'] = hit.abstract
+            result['body'] = hit.body
+            results[hit.meta.id] = result
+
+        # make the result list available globally
+        gresults = results
+
+        # get the total number of matching results
+        result_num = response.hits.total['value']
+        return render_template('more_like_this.html', results=results, title=request.form['title'], res_num=result_num, page_num=page)
+
     if request.method == 'POST':
         text_query = request.form['query']
         authors_query = request.form['authors']

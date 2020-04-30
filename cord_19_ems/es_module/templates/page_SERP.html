@@ -85,6 +85,13 @@ p.cannotfind {
             {% else %}
                 <p class="results">{{results[res]['abstract'] | safe}}</p>
             {% endif %}
+            <ul><li><form action="/results" name="search" method="post">
+        <input type="hidden" name="query" value="{{ res }}">
+        <input type="submit" value="Find articles with similar citations">
+        <input type="hidden" name="page_num" value="1" >
+        <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+
+    </form></li></ul>
         </ul>
         {% endfor %}
     {% else %}
