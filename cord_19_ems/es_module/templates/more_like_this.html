@@ -84,7 +84,7 @@ p.cannotfind {
                 <p class="results">{{results[res]['abstract'] | safe}}</p>
             {% endif %}
 
-            <form action="/more_like_this" name="search" method="post">
+            <form action="/results" name="search" method="post">
         <input type="hidden" name="doc" value="{{results[res]}}">
         <input type="submit" value="Find articles with similar citations">
         <input type="hidden" name="page_num" value="1" >
