@@ -33,7 +33,7 @@ text_analyzer = analyzer('custom',
 
 # Special datatype for author names. They contain a "first_name" and "last_name" field.
 class Name(InnerDoc):
-    first = Text()
+    first = Text(analyzer='standard')
     last = Text()
 
 # Special datatype for Citations They contain a "title" and "year" field.
@@ -131,7 +131,9 @@ def buildIndex():
                 "authors": [{"first": author['first'], "last": author["last"]}
                             for author in article['metadata']['authors']],
                 "body": ' '.join([sec['text'] for sec in article['body_text']]),
-                "citations": [{"title": citations[bib]['title'], "year": citations[bib]['year']} for bib in citations.keys()],
+                # ignore citations with no title; they cause problems comparing documents.
+                "citations": [{"title": citations[bib]['title'], "year": citations[bib]['year']}
+                              for bib in citations.keys() if citations[bib]['title'] !='' ],
                 "pr": ddict[article['metadata']['title']],
             }
     helpers.bulk(es, actions(), raise_on_error=True) # one doc in corpus contains a NAN value and it has to be ignored.

@@ -3,3 +3,4 @@
 .git
 *.
 cord_19_ems.egg-info/
+__pycache__/
