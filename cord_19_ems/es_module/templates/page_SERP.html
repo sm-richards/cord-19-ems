@@ -40,6 +40,7 @@ p.cannotfind {
 
 <div class="searchbox">
 <h3 class="header"> COVID-19 Corpus Search </h3>
+
 <form action="/results" name="search" method="post">
     <dl>
         <p>Free text search | Search Type <select name="search_type">
@@ -50,11 +51,14 @@ p.cannotfind {
         <p> Search for authors (names separated by ;): <input type="text" style="width:300px" name="authors"></p>
 
     <input type="submit" value="Search">
+         <input type="hidden" name="type" value="search">
     </dl>
 </form>
 
 <p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
-{% if page_num > 1 %}
+Rank by PageRank
+
+    {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
     <input style="width:60px;float:left;clear:right" type="submit" value="Previous">
     </form>
@@ -79,19 +83,20 @@ p.cannotfind {
     {% if res_num %}
         {% for res in results %}
         <ul>
-            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    score: {{results[res]['score']}} </pre>
+            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a> score: {{results[res]['score']}} </pre>
             {% if results[res]['abstract'] == "" %}
                 <p class="results">{{results[res]['body'] | safe}}</p>
             {% else %}
                 <p class="results">{{results[res]['abstract'] | safe}}</p>
             {% endif %}
-            <ul><li><form action="/results" name="search" method="post">
+            <form action="/results" name="search" method="post">
         <input type="hidden" name="query" value="{{ res }}">
+                <input type="hidden" name="type" value="more_like_this">
         <input type="submit" value="Find articles with similar citations">
         <input type="hidden" name="page_num" value="1" >
         <input type="hidden" name="title" value="{{ results[res]['title']  }}">
 
-    </form></li></ul>
+    </form>
         </ul>
         {% endfor %}
     {% else %}

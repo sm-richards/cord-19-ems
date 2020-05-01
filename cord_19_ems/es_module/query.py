@@ -5,7 +5,7 @@ This module implements query interface for an elasticsearch index of the Kaggle 
 from flask import *
 from elasticsearch_dsl import Q
 from index import Article
-from elasticsearch_dsl.utils import AttrList
+from elasticsearch_dsl.utils import AttrList, AttrDict
 from elasticsearch_dsl import Search
 
 app = Flask(__name__)
@@ -22,71 +22,35 @@ def search():
 @app.route("/results", defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route("/results/<page>", methods=['GET', 'POST'])
 def results(page):
+    """ Handles rendering results for multple types of queries: Search queries and 'More Like This' queries. """
     global tmp_text
     global tmp_authors
     global tmp_type
     global gresults
 
+    # Set up a search object, which wll be altered depending upon
+    # what type of query we're dealing with.
+    s = Search(index='covid_index')
+
     if type(page) is not int:
         page = int(page.encode('utf-8'))
-    if 'title' in request.form:
 
-        # then this is a more_like_this query.
-        doc_id = int(request.form['query'])
-        s = Search(index='covid_index')
-        article = Article.get(id=doc_id, index='covid_index')
-        citations = article['citations']
-        q = Q('bool',
-              should= [{"match_phrase": {'citations.title': citation['title']} for citation in citations}],
-                          minimum_should_match=1)
-        s = s.query("nested", path="citations", query=q)
-        start = 0 + (page - 1) * 10
-        end = 10 + (page - 1) * 10
+###--- More Like This Citation Queries ---###
 
-        # execute search and return results in specified range.
-        response = s[start:end].execute()
+    if request.form['type'] == "more_like_this":
+        # Get the document ID in question
+        return more_like_this(page, s)
 
-        # keep track of citations in reference article to count overlap
-        titles = set([citation['title'] for citation in citations])
-        # insert data into response
-        results = {}
-        for hit in response.hits:
-            result = {}
-            result['score'] = hit.meta.score
-
-            if 'highlight' in hit.meta:
-                print(hit.meta.highlight)
-            result['title'] = hit.title
-            result['abstract'] = hit.abstract
-            result['body'] = hit.body
-            result['citations']= hit.citations
-            # calculate set union of citations between article and reference article:
-            # use this to display on the page
-            hit_citations = set([citation['title'] for citation in result['citations']])
-            overlap = len(titles.intersection(hit_citations)) / len(titles)
-            result['overlap'] = overlap
-
-            # don't include the document itself in the results
-            if hit.meta.id !=doc_id:
-                results[hit.meta.id] = result
-
-        # make the result list available globally
-        gresults = results
-
-        # get the total number of matching results
-        result_num = response.hits.total['value']
-        return render_template('more_like_this.html', results=results, title=request.form['title'], res_num=result_num, page_num=page)
+###--- Regular Search ---###
 
     if request.method == 'POST':
         text_query = request.form['query']
         authors_query = request.form['authors']
         search_type = request.form.get('search_type')
-
         # update global variable template data
         tmp_text = text_query
         tmp_authors = authors_query
         tmp_type = search_type
-
     else:
         # use the current values stored in global variables.
         search_type = tmp_type
@@ -97,49 +61,23 @@ def results(page):
     shows['text'] = text_query
     shows['authors'] = authors_query
 
-    # Create a search object to query our index
-    s = Search(index='covid_index')
-
-    # Conjunctive search over multiple fields (title, abstract and body) using the text_query passed in
-
+    # Free Text Search
     if len(text_query) > 0:
-        print(text_query)
         if search_type == 'Conjunctive':
             operator = 'and'
         else:
             operator = 'or'
-        s = s.query('multi_match', query=text_query, type='cross_fields', fields=['title', 'abstract', 'body'], operator=operator)
+        s = s.query('multi_match', query=text_query, type='cross_fields',
+                    fields=['title', 'abstract', 'body'], operator=operator)
 
-    # Supports multiple names separated by a list
+    # Authors Query
     if len(authors_query) > 0:
-        # users can search for multiple authors separated by semicolons.
-        # grab each individual name by splitting on semicolons
-        authors = authors_query.split(";")
-        for author in authors:
-            author = author.strip(" ")
-            # grab first and last name, if applicable, for a particular author, by splitting on space
-            names = author.split(" ")
-            # if more than one name is given...
-            if len(names) > 1:
-                first_name = names[0]
-                last_name = names[1]
-                # run a compound query over the first_name and last_name fields of each individual author.
-                # requires that both first and last name match
-                q = Q('bool',
-                      must=[
-                          {"match": {'authors.first': first_name}}, {"match": {'authors.last': last_name}}
-                      ])
-                s = s.filter("nested", path="authors", query=q)
-            # if only one name is included for a particular author, return a doc if either first_name or last_name
-            # matches the queried name, for any author in the doc
-            else:
-                q = Q('bool',
-                      must=[
-                          {"match": {'authors.first': author}}]) | Q('bool',must=[{"match": {'authors.last': author}}])
-                s = s.filter("nested", path="authors", query=q)
+        s = filter_for_authors(authors_query, s)
 
+    # If no query is passed in, return all documents.
     else:
         s = s.query('match_all')
+
     # highlight
     s = s.highlight_options(pre_tags='<mark>', post_tags='</mark>')
     s = s.highlight('abstract', fragment_size=999999999, number_of_fragments=1)
@@ -151,13 +89,103 @@ def results(page):
 
     # execute search and return results in specified range.
     response = s[start:end].execute()
+    result_num = response.hits.total['value']
 
-    # insert data into response
-    resultList = {}
+    # get data for each hit, to display on results page
+    results = get_results_data(response)
+
+    # make the result list available globally
+    gresults = results
+
+    if result_num > 0:
+        return render_template('page_SERP.html', results=results,
+                               res_num=result_num, page_num=page, queries=shows)
+    else:
+        message = []
+        if len(text_query) > 0:
+            message.append('No documents matching query: ' + text_query)
+        if len(authors_query) > 0:
+            message.append('Cannot find authors: ' + authors_query)
+
+        return render_template('page_SERP.html', results=message, res_num=result_num,
+                               page_num=page, queries=shows)
+
+
+def more_like_this(page, s):
+    global gresults
+    doc_id = int(request.form['query'])
+    # Grab the actual article from the index
+    article = Article.get(id=doc_id, index='covid_index')
+    # grab a list of citation titles for this article, for comparison
+    citations = set([citation['title'] for citation in article['citations']])
+    # execute a query for articles containing matching citations
+    s = execute_more_like_this_query(citations, s)
+    # display results by 10
+    start = 0 + (page - 1) * 10
+    end = 10 + (page - 1) * 10
+    # execute search and return results in specified range.
+    response = s[start:end].execute()
+    result_num = response.hits.total['value']
+    # get data for each hit, to display on results page
+    results = get_results_data(response)
+    # calculate percentage citation overlap between each result article and reference article
+    # use this to display on the page
+    get_citation_overlap_scores(citations, results)
+    # make the result list available globally
+    gresults = results
+    # get the total number of matching results
+    return render_template('more_like_this.html', results=results, doc_id=doc_id, title=request.form['title'],
+                           res_num=result_num, page_num=page)
+
+
+def get_citation_overlap_scores(citations, results):
+    """ Finds percentage overlap in citations between two documents.
+    Used for display on 'more like this' page. """
+    for i in results:
+        result = results[i]
+        hit_citations = set([citation['title'] for citation in result['citations']])
+        overlap = len(citations.intersection(hit_citations)) / len(citations)
+        result['overlap'] = overlap
+
+
+def execute_more_like_this_query(citations, s):
+    """ Executes a 'more like this' query to find articles with similar citations."""
+    q = Q('bool',
+          should=[{"match_phrase": {'citations.title': citation} for citation in citations}],
+          minimum_should_match=1)
+    s = s.query("nested", path="citations", query=q)
+    return s
+
+
+def filter_for_authors(authors_query, s):
+    """ Filters an existing search object, s, for documents that match the authors query"""
+    authors = authors_query.split(";")
+    for author in authors:
+        author = author.strip(" ")
+        names = author.split(" ")
+        if len(names) > 1:
+            first_name = names[0]
+            last_name = names[1]
+            q = Q('bool',
+                  must=[
+                      {"match": {'authors.first': first_name}}, {"match": {'authors.last': last_name}}
+                  ])
+            s = s.filter("nested", path="authors", query=q)
+        else:
+            q = Q('bool',
+                  must=[
+                      {"match": {'authors.first': author}}]) | Q('bool', must=[{"match": {'authors.last': author}}])
+            s = s.filter("nested", path="authors", query=q)
+    return s
+
+
+def get_results_data(response):
+    """ Fills out the results metadata for each hit in 'response' """
+    results = {}
     for hit in response.hits:
         result = {}
         result['score'] = hit.meta.score
-
+        result['citations'] = hit.citations
         if 'highlight' in hit.meta:
             if 'title' in hit.meta.highlight:
                 result['title'] = hit.meta.highlight.title[0]
@@ -172,25 +200,8 @@ def results(page):
             result['title'] = hit.title
             result['abstract'] = hit.abstract
         result['body'] = hit.body
-        resultList[hit.meta.id] = result
-
-    # make the result list available globally
-    gresults = resultList
-
-    # get the total number of matching results
-    result_num = response.hits.total['value']
-
-    # if we find the results, extract title and abstract information from doc_data, else do nothing
-    if result_num > 0:
-        return render_template('page_SERP.html', results=resultList, res_num=result_num, page_num=page, queries=shows)
-    else:
-        message = []
-        if len(text_query) > 0:
-            message.append('No documents found matching all fields containing any of the following terms: ' + text_query)
-        if len(authors_query) > 0:
-            message.append('Cannot find authors: ' + authors_query)
-
-        return render_template('page_SERP.html', results=message, res_num=result_num, page_num=page, queries=shows)
+        results[hit.meta.id] = result
+    return results
 
 
 # display a particular document given a result number
@@ -203,7 +214,11 @@ def documents(res):
         if type(article[term]) is AttrList:
             s = "\n"
             for item in article[term]:
-                s += item + ",\n "
+                if type(item) is AttrDict:
+                    for subitem in item:
+                        s += subitem + ",\n "
+                else:
+                    s += item + ",\n "
             article[term] = s
     # fetch the movie from the elasticsearch index using its id
     article = Article.get(id=res, index='covid_index')
