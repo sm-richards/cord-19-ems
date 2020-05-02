@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import json
 import time
-import glob
 import os
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
@@ -11,7 +10,7 @@ from elasticsearch_dsl.analysis import analyzer, token_filter
 import networkx as nx
 from cord_19_ems.notebooks.Citation_Network import generate_citation_graph
 from collections import defaultdict
-import cord_19_ems.es_module.extras as utils                                        ### SMR ADDED
+import cord_19_ems.es_module.extras as utils
 
 # connect to local host server
 connections.create_connection(hosts=['127.0.0.1'])
@@ -20,10 +19,13 @@ connections.create_connection(hosts=['127.0.0.1'])
 es = Elasticsearch(timeout=30, max_retries=10, retry_on_timeout=True)
 
 # data paths
-data_dir = '../data'                                                                ### SMR ADDED
+data_dir = '../data'
 metadata_path = '../data_extras/all_sources_metadata_2020-03-13.csv'
 ner_path = '../data_extras/CORD-NER-ner.json'
 meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
+
+# name of index
+index_name = 'another_covid_index'
 
 
 # "text_analyzer" tokenizer splits at word boundaries, preserving internal hyphens.
@@ -34,7 +36,7 @@ meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
 de_hyphenator = token_filter('de_hyphenator', type='word_delimiter_graph', preserve_original=True)
 text_analyzer = analyzer('custom', tokenizer='pattern', pattern=r"\b[\w-]+\b",
                          filter=['lowercase', 'porter_stem', de_hyphenator, 'flatten_graph'])
-entity_analyzer = analyzer('custom', tokenizer='whitespace', filter=['lowercase'])  # ADDED BY SMR
+entity_analyzer = analyzer('custom', tokenizer='whitespace', filter=['lowercase'])
 
 
 # special datatype for author names. They contain a "first_name" and "last_name" field.
@@ -78,7 +80,7 @@ def buildIndex():
     pagerank_scores = nx.pagerank(citation_graph)
     ddict = defaultdict(float, pagerank_scores)
 
-    article_index = Index('another_covid_index')
+    article_index = Index(index_name)
     if article_index.exists():
         article_index.delete()  # overwrite any previous version
     article_index.document(Article)  # register the document mapping
@@ -113,7 +115,7 @@ def buildIndex():
             cits = [{"title": cit['title'], "year": cit['year']} for cit in cits.values() if cit['title'] != '']
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
-            abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']])
+            abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
             body = ' '.join([sect['text'] for sect in article['body_text']])
 
             # TEST FIELDS HERE
@@ -121,7 +123,7 @@ def buildIndex():
             #      f"\nabstract {abstract}\ngenes {gene_or_genome}\n")
 
             yield {
-                "_index": "another_covid_index",
+                "_index": index_name,
                 "_type": '_doc',
                 "_id": i,
                 "title": title,
@@ -135,7 +137,7 @@ def buildIndex():
                 "gene_or_genome": gene_or_genome
             }
 
-    helpers.bulk(es, actions(), raise_on_error=True) # one doc in corpus contains a NAN value and it has to be ignored.
+    helpers.bulk(es, actions(), raise_on_error=True)  # one doc in corpus contains a NAN value and it has to be ignored.
 
 
 # command line invocation builds index and prints the running time.
@@ -145,7 +147,7 @@ def main():
     if not os.path.isfile(meta_ner_path):
         utils.all_ner_metadata_cross_reference(metadata_path, ner_path, meta_ner_path)
     buildIndex()
-    print("=== Built index in %s seconds ===" % (time.time() - start_time))
+    print(f"=== Built {index_name} in %s seconds ===" % (time.time() - start_time))
 
 
 if __name__ == '__main__':

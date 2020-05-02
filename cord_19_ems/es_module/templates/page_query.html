@@ -10,19 +10,69 @@ dd {
 <div style="width:100%">
 <h3 style="background-color:black;color:lightgrey"> COVID-19 Corpus Search </h3>
 
-<h1>COVID-19 Corpus Search Engine</h1>
-
+<h1>COVID-19 Literature Search Engine</h1>
 
 <form action="/results" name="search" method="post">
     <dl>
-        <p>Free text search | Search Type <select name="search_type">
-            <option value="Disjunctive">Disjunctive</option>
-            <option value="Conjunctive">Conjunctive</option>
-        </select>
-         <input type="text" style="width:300px" name="query"></p>
-        <p> Search for authors (names separated by ;): <input type="text" style="width:300px" name="authors"></p>
+        <dd><p>Keyword search:</p>
+            <textarea rows="3" cols="100" name="query"></textarea>
 
-    <input type="submit" value="Search">
+        <dd><input type="radio" id="and" name="search_type" value="and" checked>
+        <label for="and">Find articles containing ALL search terms</label><br>
+        <input type="radio" id="or" name="search_type" value="or">
+        <label for="or">Find articles containing AT LEAST ONE search term</label><br></dd><br>
+
+        <dd>Search in authors: <input type="text" style="width:300px" name="authors" placeholder="e.g., Lanzar; Perez">
+        <dd>Publication Year: from
+
+        <select id="mindate" name="mindate">
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+            <option value="2020">2020</option>
+        </select>
+
+        through
+
+        <select id="maxdate" name="maxdate">
+            <option value="2020">2020</option>
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+        </select><br><br>
+
+        <dd><input type="submit" value="Search"></dd>
+         <input type="hidden" name="type" value="search">
     </dl>
 </form>
 </div>

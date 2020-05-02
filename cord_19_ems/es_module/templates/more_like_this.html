@@ -7,12 +7,28 @@
     font-family: "Times New Roman", Times, sans-serif;
     font-weight: bold;
 }
+form {
+    display: inline;
+}
 p.results {
     color:grey;
     line-height:20px;
     height:60px;
     overflow:hidden;
     font-size:14px
+}
+p.topics {
+    color:grey;
+    line-height:20px;
+    height:20px;
+    overflow:hidden;
+    font-size:14px
+}
+p.more_like {
+    color:grey;
+    line-height:15px;
+    font-size:14px;
+    overflow:hidden
 }
 p.cannotfind {
     background-color:pink;
@@ -32,24 +48,16 @@ p.cannotfind {
     border-bottom: 2px dotted black;
 }
 .contents{
-    margin-top:280px;
+    margin-top:150px;
     padding:0;
     clear:left;
 }
 </style>
 <div class="searchbox">
-<h3 class="header"> COVID-19 Corpus Search </h3>
+<h3 class="header"> COVID-19 Literature Search </h3>
 <form action="/results" name="search" method="post">
-    <dl>
-        <p>Free text search | Search Type <select name="search_type">
-            <option value="Disjunctive">Disjunctive</option>
-            <option value="Conjunctive">Conjunctive</option>
-        </select>
-         <input type="text" style="width:300px" name="query"></p>
-        <p> Search for authors (names separated by ;): <input type="text" style="width:300px" name="authors"></p>
 
-    <input type="submit" value="Search">
-    </dl>
+
 </form>
 <p style="font-size:14px">Found {{res_num}} documents with shared citations. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
 {% if page_num > 1 %}
@@ -76,21 +84,50 @@ p.cannotfind {
 </p>
     {% if res_num %}
         {% for res in results %}
-        <ul>
-            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    Percent citation overlap: {{ '%0.2f'|format((results[res]['overlap'] * 100)|float) }} % </pre>
-            {% if results[res]['abstract'] == "" %}
-                <p class="results">{{results[res]['body'] | safe}}</p>
-            {% else %}
-                <p class="results">{{results[res]['abstract'] | safe}}</p>
+            {% if res != doc_id %}
+            <ul>
+                <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    Percent shared citations: {{ '%0.2f'|format((results[res]['overlap'] * 100)|float) }} % </pre>
+                {% if results[res]['abstract'] == "" %}
+                    <p class="results">{{results[res]['body'] | safe}}</p>
+                {% else %}
+                    <p class="results">{{results[res]['abstract'] | safe}}</p>
+                {% endif %}
             {% endif %}
 
-            <form action="/results" name="search" method="post">
-        <input type="hidden" name="query" value="{{res}}">
-        <input type="submit" value="Find articles with similar citations">
-        <input type="hidden" name="page_num" value="1" >
-        <input type="hidden" name="title" value="{{ results[res]['title'] }}">
+                <!-- entity links -->
+                <p class="topics"><b>topics:</b>
+                {% for ent in results[res]['entities_list'] %}
+                <form action="/results" name="search" method="post">
+                    <input type="hidden" name="query" value="{{ res }}">
+                    <input type="submit" value="{{ent}}">
+                    <input type="hidden" name="type" id="match_entity" value=match_entity>
+                    <input type="hidden" name="ent" id="ent" value="{{ent}}">
+                    <input type="hidden" name="page_num" value="1" >
+                    <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+                </form>
+                {% endfor %}
+                </p>
 
-    </form>
+                <!-- old entities list
+                <p class="results"><b>topics:</b> <i>{{results[res]['entities'] | safe}}</i></p> -->
+
+                <!-- more like this buttons -->
+                <form action="/results" name="search" method="post">
+                <p class="more_like">
+                    <input type="hidden" name="query" value="{{ res }}">
+                    <input type="submit" value="Find more articles">
+
+                    <input type="radio" name="type" id="like_citations" value="more_like_this_citations" checked>
+                    <label for="like_citations">with similar citations</label>
+
+                    <input type="radio" name="type" id="like_ents" value="more_like_this_entities">
+                    <label for="like_ents">with similar topics</label><br>
+
+                    <input type="hidden" name="page_num" value="1" >
+                    <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+                </p>
+            </form>
+
         </ul>
         {% endfor %}
     {% else %}

@@ -3,6 +3,9 @@
 <body bgcolor="white">
 <title>Search Results</title>
 <style>
+form {
+    display: inline;
+}
 .sansserif {
     font-family: "Times New Roman", Times, sans-serif;
     font-weight: bold;
@@ -13,6 +16,19 @@ p.results {
     height:60px;
     overflow:hidden;
     font-size:14px
+}
+p.topics {
+    color:grey;
+    line-height:20px;
+    height:20px;
+    overflow:hidden;
+    font-size:14px
+}
+p.more_like {
+    color:grey;
+    line-height:15px;
+    font-size:14px;
+    overflow:hidden
 }
 p.cannotfind {
     background-color:pink;
@@ -32,29 +48,30 @@ p.cannotfind {
     border-bottom: 2px dotted black;
 }
 .contents{
-    margin-top:280px;
+    margin-top:220px;
     padding:0;
     clear:left;
 }
 </style>
 
 <div class="searchbox">
-<h3 class="header"> COVID-19 Corpus Search </h3>
+<h3 class="header"> COVID-19 Literature Search </h3>
+
 <form action="/results" name="search" method="post">
     <dl>
-        <p>Free text search | Search Type <select name="search_type">
-            <option value="Disjunctive">Disjunctive</option>
-            <option value="Conjunctive">Conjunctive</option>
-        </select>
-         <input type="text" style="width:300px" name="query"></p>
-        <p> Search for authors (names separated by ;): <input type="text" style="width:300px" name="authors"></p>
+        <dd>Keywords: <input type="text" style="width:400px" name="query" value="{{queries['text']}}">
+        <dd>Search by author(s): <input type="text" style="width:300px" name="authors" value="{{queries['authors']}}">
+        <dd>Publication Date: from <input type="text" name="mindate" value={{queries['mindate']}}> to <input type="text" name="maxdate" value={{queries['maxdate']}}>
 
     <input type="submit" value="Search">
+         <input type="hidden" name="type" value="search">
     </dl>
 </form>
 
 <p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
-{% if page_num > 1 %}
+Rank by PageRank
+
+    {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
     <input style="width:60px;float:left;clear:right" type="submit" value="Previous">
     </form>
@@ -78,20 +95,46 @@ p.cannotfind {
 </p>
     {% if res_num %}
         {% for res in results %}
-        <ul>
-            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    score: {{results[res]['score']}} </pre>
+        <p>
+            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a> score: {{results[res]['score']}} </pre>
             {% if results[res]['abstract'] == "" %}
                 <p class="results">{{results[res]['body'] | safe}}</p>
             {% else %}
                 <p class="results">{{results[res]['abstract'] | safe}}</p>
             {% endif %}
-            <ul><li><form action="/results" name="search" method="post">
-        <input type="hidden" name="query" value="{{ res }}">
-        <input type="submit" value="Find articles with similar citations">
-        <input type="hidden" name="page_num" value="1" >
-        <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+            <!-- static list of topis
+            <p class="results"><b>topics:</b> <i>{{results[res]['entities'] | safe}}</i></p> -->
 
-    </form></li></ul>
+            <!-- tag list of entities -->
+            <p class="topics"><b>topics:</b>
+            {% for ent in results[res]['entities_list'] %}
+                <form action="/results" name="search" method="post">
+                    <input type="hidden" name="query" value="{{ res }}">
+                    <input type="submit" value="{{ent}}">
+                    <input type="hidden" name="type" id="match_entity" value=match_entity>
+                    <input type="hidden" name="ent" id="ent" value="{{ent}}">
+                    <input type="hidden" name="page_num" value="1" >
+                    <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+                </form>
+            {% endfor %}
+            </p>
+
+            <!-- more like this button(s) -->
+            <form action="/results" name="search" method="post">
+                <p class="more_like">
+                    <input type="hidden" name="query" value="{{ res }}">
+                    <input type="submit" value="Find more articles">
+
+                    <input type="radio" name="type" id="like_citations" value="more_like_this_citations" checked>
+                    <label for="like_citations">with similar citations</label>
+
+                    <input type="radio" name="type" id="like_ents" value="more_like_this_entities">
+                    <label for="like_ents">with similar topics</label><br>
+
+                    <input type="hidden" name="page_num" value="1" >
+                    <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+                </p>
+            </form>
         </ul>
         {% endfor %}
     {% else %}
