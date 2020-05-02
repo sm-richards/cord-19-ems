@@ -72,6 +72,8 @@ def results(page):
             tmp_max = maxdate
             tmp_search_operator = search_operator
             tmp_search_type = search_type
+
+# ---------------GET---------------#
     else:
         search_operator = tmp_search_operator
         search_type = tmp_search_type
@@ -80,6 +82,7 @@ def results(page):
         mindate_query = tmp_min if tmp_min > 0 else ""
         maxdate_query = tmp_max if tmp_max < 99999 else ""
 
+# ---------------MORE LIKE THIS ---------------#
     if search_type=='more_like_this_citations':
         return more_like_this(page, s, tmp_doc_id)
     elif search_type == 'more_like_this_entities':
@@ -87,7 +90,7 @@ def results(page):
     elif search_type == 'match_entity':
         return more_like_this_ents(page, s, tmp_doc_id, single_ent=True)
 
-# ---------------POST---------------#
+# ---------------STANDARD SEARCH---------------#
     shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query}
 
     # free text search
