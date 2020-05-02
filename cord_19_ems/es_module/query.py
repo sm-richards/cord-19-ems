@@ -17,11 +17,9 @@ tmp_text = ""
 tmp_authors = ""
 gresults = {}
 
-
 @app.route("/")
 def search():
     return render_template('page_query.html')
-
 
 @app.route("/results", defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route("/results/<page>", methods=['GET', 'POST'])
@@ -29,10 +27,12 @@ def results(page):
     """ Handles rendering results for multple types of queries: Search queries and 'More Like This' queries. """
     global tmp_text
     global tmp_authors
-    global tmp_type
+    global tmp_search_type
     global tmp_min
     global tmp_max
     global gresults
+    global tmp_doc_id
+    global tmp_search_operator
 
     # Set up a search object, which wll be altered depending upon
     # what type of query we're dealing with.
@@ -41,49 +41,59 @@ def results(page):
     if type(page) is not int:
         page = int(page.encode('utf-8'))
 
-    # More Like This Citation Queries ----------------------------------------------------------------------------------
-    if request.form['type'] == "more_like_this_citations":
-        # Get the document ID in question
-        return more_like_this(page, s)
-    elif request.form['type'] == 'more_like_this_entities':
-        return more_like_this_ents(page, s)
-    elif request.form['type'] == 'match_entity':
-        return more_like_this_ents(page, s, single_ent=True)
+#---------------POST---------------#
+    if request.method == 'POST':
+        search_type = request.form['type']
+        tmp_search_type = search_type
 
-    # Regular Search ---------------------------------------------------------------------------------------------------
-    # set up variables
-    elif request.method == 'POST':
-        text_query = request.form['query']
-        authors_query = request.form['authors']
-        search_type = request.form.get('search_type')
+        # More Like This Queries
+        if search_type !='search':
+            tmp_doc_id = request.form['query']
+
+        # Standard Queries
+        else:
+            text_query = request.form['query']
+            authors_query = request.form['authors']
+            # 'search_operator' refers to conjunctive vs disjunctive
+            search_operator = request.form.get('search_operator')
+            # 'type' refers to more_like_this or regular query
+            search_type = request.form.get('type')
 
         # handle date range
-        mindate_query = request.form['mindate']
-        mindate = int(mindate_query) if len(mindate_query) > 0 else 0
-        maxdate_query = request.form['maxdate']
-        maxdate = int(maxdate_query) if len(maxdate_query) > 0 else 99999
+            mindate_query = request.form['mindate']
+            mindate = int(mindate_query) if len(mindate_query) > 0 else 0
+            maxdate_query = request.form['maxdate']
+            maxdate = int(maxdate_query) if len(maxdate_query) > 0 else 99999
 
         # update global variable template data
-        tmp_text = text_query
-        tmp_authors = authors_query
-        tmp_min = mindate
-        tmp_max = maxdate
-        tmp_type = search_type
+            tmp_text = text_query
+            tmp_authors = authors_query
+            tmp_min = mindate
+            tmp_max = maxdate
+            tmp_search_operator = search_operator
+            tmp_search_type = search_type
     else:
-        # use the current values stored in global variables.
-        search_type = tmp_type
+        search_operator = tmp_search_operator
+        search_type = tmp_search_type
         text_query = tmp_text
         authors_query = tmp_authors
         mindate_query = tmp_min if tmp_min > 0 else ""
         maxdate_query = tmp_max if tmp_max < 99999 else ""
 
-    # store query values to display in search boxes in UI
+    if search_type=='more_like_this_citations':
+        return more_like_this(page, s, tmp_doc_id)
+    elif search_type == 'more_like_this_entities':
+        return more_like_this_ents(page, s, tmp_doc_id)
+    elif search_type == 'match_entity':
+        return more_like_this_ents(page, s, tmp_doc_id, single_ent=True)
+
+# ---------------POST---------------#
     shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query}
 
     # free text search
     if len(text_query) > 0:
         s = s.query('multi_match', query=text_query, type='cross_fields',
-                    fields=['title', 'abstract', 'body'], operator=search_type)
+                fields=['title', 'abstract', 'body'], operator=search_operator)
 
     # authors search
     if len(authors_query) > 0:
@@ -125,9 +135,10 @@ def results(page):
                                page_num=page, queries=shows)
 
 
-def more_like_this_ents(page, s, single_ent=False):
+def more_like_this_ents(page, s, doc_id, single_ent=False):
     global gresults
-    doc_id = int(request.form['query'])
+    article = Article.get(id=doc_id, index=index_name)
+    title = article['title']
 
     # execute a query for articles containing matching entities
     if single_ent:
@@ -156,16 +167,16 @@ def more_like_this_ents(page, s, single_ent=False):
     gresults = results
 
     # get the total number of matching results
-    return render_template('more_like_this.html', results=results, doc_id=doc_id, title=request.form['title'],
+    return render_template('more_like_this.html', results=results, doc_id=doc_id, title=title,
                            res_num=result_num, page_num=page)
 
 
-def more_like_this(page, s):
+def more_like_this(page, s, doc_id):
     global gresults
-    doc_id = int(request.form['query'])
 
     # Grab the actual article from the index
     article = Article.get(id=doc_id, index=index_name)
+    title = article['title']
 
     # grab a list of citation titles for this article, for comparison
     citations = set([citation['title'] for citation in article['citations']])
@@ -195,7 +206,7 @@ def more_like_this(page, s):
     gresults = results
 
     # get the total number of matching results
-    return render_template('more_like_this.html', results=results, doc_id=doc_id, title=request.form['title'],
+    return render_template('more_like_this.html', results=results, doc_id=doc_id, title=title,
                            res_num=result_num, page_num=page)
 
 
