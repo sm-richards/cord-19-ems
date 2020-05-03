@@ -46,7 +46,7 @@ def generate_citation_graph(data_path):
     citations = [{"title": ref, "citation": citation} for ref in refdict for citation in refdict[ref]]
     citations = pd.DataFrame(citations)
     graph = nx.from_pandas_edgelist(citations, source='title', target='citation', create_using=nx.DiGraph)
-    return graph
+    return graph, in_corpus_titles
 
 # # Helper functions demonstrating some uses of the graph
 

@@ -59,11 +59,64 @@ p.cannotfind {
 
 <form action="/results" name="search" method="post">
     <dl>
-        <dd>Keywords: <input type="text" style="width:400px" name="query" value="{{queries['text']}}">
-        <dd>Search by author(s): <input type="text" style="width:300px" name="authors" value="{{queries['authors']}}">
-        <dd>Publication Date: from <input type="text" name="mindate" value={{queries['mindate']}}> to <input type="text" name="maxdate" value={{queries['maxdate']}}>
+        <dd><p>Keyword search:</p>
+            <textarea rows="3" cols="100" name="query"></textarea>
 
-    <input type="submit" value="Search">
+        <dd><input type="radio" id="and" name="search_operator" value="and" checked>
+        <label for="and">Find articles containing ALL search terms</label><br>
+        <input type="radio" id="or" name="search_operaetor" value="or">
+        <label for="or">Find articles containing AT LEAST ONE search term</label><br></dd><br>
+
+        <dd>Search in authors: <input type="text" style="width:300px" name="authors" placeholder="e.g., Lanzar; Perez">
+        <dd>Publication Year: from
+
+        <select id="mindate" name="mindate">
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+            <option value="2020">2020</option>
+        </select>
+
+        through
+
+        <select id="maxdate" name="maxdate">
+            <option value="2020">2020</option>
+            <option value="2002">2002</option>
+            <option value="2003">2003</option>
+            <option value="2004">2004</option>
+            <option value="2005">2005</option>
+            <option value="2006">2006</option>
+            <option value="2007">2007</option>
+            <option value="2008">2008</option>
+            <option value="2009">2009</option>
+            <option value="2010">2010</option>
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            <option value="2017">2017</option>
+            <option value="2018">2018</option>
+            <option value="2019">2019</option>
+        </select><br><br>
+
+        <dd><input type="submit" value="Search"></dd>
          <input type="hidden" name="type" value="search">
     </dl>
 </form>
