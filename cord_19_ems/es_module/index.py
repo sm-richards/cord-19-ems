@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import json
 import time
 import os
+import pickle
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from elasticsearch_dsl import Index, Document, Text, Integer, Long, Nested, InnerDoc
@@ -50,6 +51,7 @@ class Citation(InnerDoc):
     title = Text()
     year = Integer()
     in_corpus = Integer()
+    authors = Nested(Name)
 
 
 class Article(Document):
@@ -77,7 +79,7 @@ def buildIndex():
     using a generator function.
     """
 
-    citation_graph, in_corpus_titles = generate_citation_graph('../data')
+    citation_graph = pickle.load(open('../notebooks/graph.p','rb'))
     pagerank_scores = nx.pagerank(citation_graph)
     ddict = defaultdict(float, pagerank_scores)
 
@@ -89,6 +91,11 @@ def buildIndex():
 
     # load articles
     articles = utils.load_dataset_to_dict(data_dir)
+    titles_to_ids = {v['metadata']['title'].lower():k for k,v in enumerate(articles.values())}
+    # builds a default dictionary mapping article titles to index IDs, with
+    # -1 as the default value for a key error.
+    titles_to_ids = defaultdict(lambda: -1, titles_to_ids)
+
     print("SIZE OF ARTICLES: ", len(articles.keys()))
 
     # open ner and metadata dict
@@ -113,15 +120,12 @@ def buildIndex():
             # extract contents of article dict
             title = article['metadata']['title'] if 'title' in article['metadata'].keys() else ''
             cits = article['bib_entries'] if 'bib_entries' in article.keys() else [{}]
-            cits = [{"title": cit['title'], "year": cit['year'], "in_corpus": int(cit['title'] in in_corpus_titles)} for cit in cits.values() if cit['title'] != '']
+            cits = [{"title": cit['title'], "year": cit['year'], "in_corpus": titles_to_ids[cit['title'].lower()],
+                     "authors": [{"first": auth['first'], "last": auth["last"]} for auth in cit['authors']]} for cit in cits.values() if cit['title'] != '']
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
-            body = ' '.join([sect['text'] for sect in article['body_text']])
-
-            # TEST FIELDS HERE
-            #print(f"\ntitle {title}\ncitations {cits}\nauthors {authors}\nyear {publish_time}\npr {pr}"
-            #      f"\nabstract {abstract}\ngenes {gene_or_genome}\n")
+            body = '\n'.join([sect['text'] for sect in article['body_text']])
 
             yield {
                 "_index": index_name,
