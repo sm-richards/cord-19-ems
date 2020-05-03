@@ -1,12 +1,25 @@
+
 <!doctype html>
+<style>
+    .article{
+    margin-top:0px;
+    margin-right:0px
+    margin-left:0px;
+    padding-left:300px;
+    padding-right:300px;
+    padding-top:10px;
+    padding-bottom:10px;
+    clear:left;
+}
+</style>
 
 <body bgcolor="white">
-
+<div class="article">
 <h3>{{title|safe}}</h3>
 <div class="article" style="word-wrap:break-word; padding:10px;">
     {% for term in article %}
         <pre style="white-space: pre-wrap;"><strong>{{term}}</strong>: {{article[term] | safe}}</pre>
     {% endfor %}
 </div>
-
+</div>
 </body>

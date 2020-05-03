@@ -17,9 +17,11 @@ tmp_text = ""
 tmp_authors = ""
 gresults = {}
 
+
 @app.route("/")
 def search():
     return render_template('page_query.html')
+
 
 @app.route("/results", defaults={'page': 1}, methods=['GET', 'POST'])
 @app.route("/results/<page>", methods=['GET', 'POST'])
@@ -34,16 +36,16 @@ def results(page):
     global tmp_doc_id
     global tmp_search_operator
 
-    # Set up a search object, which wll be altered depending upon
-    # what type of query we're dealing with.
+    # instantiate a search object
     s = Search(index=index_name)
 
+    # make sure 'page' id is an int
     if type(page) is not int:
         page = int(page.encode('utf-8'))
 
-#---------------POST---------------#
+    # initialize variables differently depending on whether method is GET or POST --------------------------------------
     if request.method == 'POST':
-        search_type = request.form['type']
+        search_type = request.form['type']  # 'more_like_this' or 'search'
         tmp_search_type = search_type
 
         # More Like This Queries
@@ -56,25 +58,21 @@ def results(page):
             authors_query = request.form['authors']
             # 'search_operator' refers to conjunctive vs disjunctive
             search_operator = request.form.get('search_operator')
-            # 'type' refers to more_like_this or regular query
-            search_type = request.form.get('type')
 
-        # handle date range
+            # handle date range
             mindate_query = request.form['mindate']
             mindate = int(mindate_query) if len(mindate_query) > 0 else 0
             maxdate_query = request.form['maxdate']
             maxdate = int(maxdate_query) if len(maxdate_query) > 0 else 99999
 
-        # update global variable template data
+            # update global variable template data
             tmp_text = text_query
             tmp_authors = authors_query
             tmp_min = mindate
             tmp_max = maxdate
             tmp_search_operator = search_operator
-            tmp_search_type = search_type
 
-# ---------------GET---------------#
-    else:
+    else:  # request.method == 'GET':
         search_operator = tmp_search_operator
         search_type = tmp_search_type
         text_query = tmp_text
@@ -82,15 +80,15 @@ def results(page):
         mindate_query = tmp_min if tmp_min > 0 else ""
         maxdate_query = tmp_max if tmp_max < 99999 else ""
 
-# ---------------MORE LIKE THIS ---------------#
-    if search_type=='more_like_this_citations':
+    # Search type is either MORE LIKE THIS or STANDARD SEARCH-----------------------------------------------------------
+    if search_type == 'more_like_this_citations':
         return more_like_this(page, s, tmp_doc_id)
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)
     elif search_type == 'match_entity':
         return more_like_this_ents(page, s, tmp_doc_id, single_ent=True)
 
-# ---------------STANDARD SEARCH---------------#
+    # ---------------STANDARD SEARCH--------------- #
     shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query}
 
     # free text search
@@ -282,6 +280,7 @@ def get_results_data(response):
 def documents(res):
     global gresults
     article = gresults[res]
+    print(res, article)
     article_title = article['title']
     for term in article:
         if type(article[term]) is AttrList:

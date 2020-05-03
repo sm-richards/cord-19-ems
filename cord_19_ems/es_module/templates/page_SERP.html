@@ -20,7 +20,7 @@ p.results {
 p.topics {
     color:grey;
     line-height:20px;
-    height:20px;
+    height:18px;
     overflow:hidden;
     font-size:14px
 }
@@ -48,8 +48,8 @@ p.cannotfind {
     border-bottom: 2px dotted black;
 }
 .contents{
-    margin-top:220px;
-    padding:0;
+    margin-top:320px;
+    padding:0px;
     clear:left;
 }
 </style>
@@ -59,8 +59,7 @@ p.cannotfind {
 
 <form action="/results" name="search" method="post">
     <dl>
-        <dd><p>Keyword search:</p>
-            <textarea rows="3" cols="100" name="query"></textarea>
+        <dd><textarea rows="2" cols="100" name="query"></textarea>
 
         <dd><input type="radio" id="and" name="search_operator" value="and" checked>
         <label for="and">Find articles containing ALL search terms</label><br>
@@ -119,19 +118,18 @@ p.cannotfind {
         <dd><input type="submit" value="Search"></dd>
          <input type="hidden" name="type" value="search">
     </dl>
-</form>
+    </form>
 
-<p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
-Rank by PageRank
+    <dd><p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p></dd>
 
     {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
-    <input style="width:60px;float:left;clear:right" type="submit" value="Previous">
+        <dd><input style="width:90px;float:left;clear:right" type="submit" value="Previous Page"></dd>
     </form>
 {% endif %}
 {% if ((res_num/10)|round(0,'ceil')) > page_num %}
     <form action="/results/{{page_num+1}}" name="nextpage" method="get">
-    <input style="width:60px;float:left" type="submit" value="Next">
+        <dd><input style="width:75px;float:left" type="submit" value="Next Page"></dd>
     </form>
 {% endif %}
 
