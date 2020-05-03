@@ -118,14 +118,14 @@ def buildIndex():
                 gene_or_genome = ''
 
             # extract contents of article dict
-            title = article['metadata']['title'] if 'title' in article['metadata'].keys() else ''
+            title = article['metadata']['title'] if 'title' in article['metadata'].keys() else '(Untitled)'
             cits = article['bib_entries'] if 'bib_entries' in article.keys() else [{}]
             cits = [{"title": cit['title'], "year": cit['year'], "in_corpus": titles_to_ids[cit['title'].lower()],
                      "authors": [{"first": auth['first'], "last": auth["last"]} for auth in cit['authors']]} for cit in cits.values() if cit['title'] != '']
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
-            body = '\n'.join([sect['text'] for sect in article['body_text']])
+            body = '\n\n'.join([sect['text'] for sect in article['body_text']])
 
             yield {
                 "_index": index_name,
