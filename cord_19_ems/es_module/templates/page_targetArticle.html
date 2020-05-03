@@ -17,9 +17,30 @@
 <div class="article">
 <h3>{{title|safe}}</h3>
 <div class="article" style="word-wrap:break-word; padding:10px;">
-    {% for term in article %}
-        <pre style="white-space: pre-wrap;"><strong>{{term}}</strong>: {{article[term] | safe}}</pre>
+     <pre style="white-space: pre-wrap;"><strong>ID</strong>: {{article['id_num'] | safe}}</pre>
+    {% for author in article['authors'][:-1] %}
+    {{ author.last }}, {{ author.first }};
     {% endfor %}
+{#    {{ article['authors'][-1].first }} {{ article['authors'][-1].last }}#}
+{% if article['abstract'] !='' %}
+<h3>Abstract</h3>
+ <pre style="white-space: pre-wrap;"> {{article['abstract'] | safe}}</pre><br>
+{% endif %}
+ <pre style="white-space: pre-wrap;"> {{article['body'] | safe}}</pre>
+ <h3>References</h3>
+ {% for cit in article['citations'] %}
+      {% for author in cit['authors'] %}
+    {{ author.last }}, {{ author.first }};
+          {% endfor %}
+     {% if cit['in_corpus'] != -1 %}
+         <pre class="sansserif"><a href="/documents/{{ cit['in_corpus']}}" target="_blank">  {{ cit.title|safe }} </a></pre>
+     {% else %}
+     {{ cit.title }}
+     {% endif %}
+        {{ cit.year }}.<br><br>
+
+    {% endfor %}
+
 </div>
 </div>
 </body>
