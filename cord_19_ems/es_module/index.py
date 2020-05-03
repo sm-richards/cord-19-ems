@@ -49,6 +49,7 @@ class Name(InnerDoc):
 class Citation(InnerDoc):
     title = Text()
     year = Integer()
+    in_corpus = Integer()
 
 
 class Article(Document):
@@ -76,7 +77,7 @@ def buildIndex():
     using a generator function.
     """
 
-    citation_graph = generate_citation_graph('../data')
+    citation_graph, in_corpus_titles = generate_citation_graph('../data')
     pagerank_scores = nx.pagerank(citation_graph)
     ddict = defaultdict(float, pagerank_scores)
 
@@ -112,7 +113,7 @@ def buildIndex():
             # extract contents of article dict
             title = article['metadata']['title'] if 'title' in article['metadata'].keys() else ''
             cits = article['bib_entries'] if 'bib_entries' in article.keys() else [{}]
-            cits = [{"title": cit['title'], "year": cit['year']} for cit in cits.values() if cit['title'] != '']
+            cits = [{"title": cit['title'], "year": cit['year'], "in_corpus": int(cit['title'] in in_corpus_titles)} for cit in cits.values() if cit['title'] != '']
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
