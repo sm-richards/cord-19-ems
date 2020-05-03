@@ -12,6 +12,7 @@ import networkx as nx
 from cord_19_ems.notebooks.Citation_Network import generate_citation_graph
 from collections import defaultdict
 import cord_19_ems.es_module.extras as utils
+import langid
 
 # connect to local host server
 connections.create_connection(hosts=['127.0.0.1'])
@@ -96,12 +97,9 @@ def buildIndex():
     # -1 as the default value for a key error.
     titles_to_ids = defaultdict(lambda: -1, titles_to_ids)
 
-    print("SIZE OF ARTICLES: ", len(articles.keys()))
-
     # open ner and metadata dict
     with open(meta_ner_path, 'r') as f:
         meta_ner_all = json.load(f)
-    print("SIZE OF META DATA: ", len(meta_ner_all.keys()))
 
     def actions():
         for i, article in enumerate(articles.values()):
@@ -127,6 +125,9 @@ def buildIndex():
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
             body = '\n\n'.join([sect['text'] for sect in article['body_text']])
 
+            # check that article is in English
+            in_english = (langid.classify(body)[0] == 'en')
+
             yield {
                 "_index": index_name,
                 "_type": '_doc',
@@ -138,6 +139,7 @@ def buildIndex():
                 "authors": authors,
                 "publish_time": publish_time,
                 "citations": cits,
+                "in_english": in_english,
                 "pr": pr,
                 "gene_or_genome": gene_or_genome
             }
