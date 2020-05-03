@@ -51,7 +51,7 @@ def generate_citation_graph(data_path):
     return graph
 
 if __name__=='__main__':
-    citation_graph, titles_to_ids = generate_citation_graph('../data')
+    citation_graph = generate_citation_graph('../data')
     with open('graph.p', 'wb') as f:
         pickle.dump(citation_graph, f)
 
