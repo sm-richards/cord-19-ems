@@ -19,6 +19,7 @@
 </style>
 
 <body bgcolor="white">
+<title>{{ title }}</title>
 <div class="article">
 <h1>{{title|safe}}</h1>
 <div class="article" style="word-wrap:break-word; padding:10px;">
@@ -43,10 +44,10 @@
     {{ author.last }}, {{ author.first }};
           {% endfor %}
      {% if cit['authors'][-1] %}
-      {{ cit['authors'][-1].last }}, {{ cit['authors'][-1].first }}.
+      {{ cit['authors'][-1].last }}, {{cit['authors'][-1].first }}.
      {% endif %}
      {% if cit['in_corpus'] != -1 %}
-         <a href="/documents/{{ cit['in_corpus']}}" target="_blank">{{ cit.title}}.</a>
+         <a href="/documents/{{cit['in_corpus']}}" target="_blank">{{cit.title}}.</a>
      {% else %}
      {{ cit.title }}.
      {% endif %}
