@@ -4,3 +4,5 @@
 *.
 cord_19_ems.egg-info/
 __pycache__/
+cord_19_ems/notebooks/dict.p
+cord_19_ems/notebooks/graph.p
