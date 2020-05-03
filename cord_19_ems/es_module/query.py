@@ -279,23 +279,8 @@ def get_results_data(response):
 # display a particular document given a result number
 @app.route("/documents/<res>", methods=['GET'])
 def documents(res):
-    global gresults
-    article = gresults[res]
-    article_title = article['title']
-    for term in article:
-        if type(article[term]) is AttrList:
-            s = "\n"
-            for item in article[term]:
-                if type(item) is AttrDict:
-                    for subitem in item:
-                        s += subitem + ",\n "
-                else:
-                    s += item + ",\n "
-            article[term] = s
-
-    # fetch the movie from the elasticsearch index using its id
     article = Article.get(id=res, index=index_name)
-    articledict = article.to_dict()
+    article_title = article['title']
     return render_template('page_targetArticle.html', article=article, title=article_title)
 
 
