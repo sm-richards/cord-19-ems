@@ -10,8 +10,7 @@ from collections import defaultdict
 import networkx as nx
 import pandas as pd
 
-# Keep track of titles corresponding to articles in the corpus
-in_corpus_titles = set()
+import pickle
 
 def generate_citation_graph(data_path):
     """
@@ -21,6 +20,9 @@ def generate_citation_graph(data_path):
     :param data_path: path to a folder of .json files in the non-comm-use Kaggle dataset.
     :return: networkx DiGraph object representing citation relationships in the dataset.
     """
+    # Keep track of titles corresponding to articles in the corpus, and their corresponding paper IDs
+    titles_to_shas = defaultdict(str)
+
     refdict = defaultdict(list)
     for dir, subdir, files in os.walk(data_path):
         for file in files:
@@ -28,7 +30,7 @@ def generate_citation_graph(data_path):
                 with open(os.path.join(dir, file), 'r') as f:
                     data = json.load(f)
                     reftitle = data['metadata']['title'].lower()
-                    in_corpus_titles.add(reftitle)
+                    titles_to_shas[reftitle] = data['paper_id']
 
                     # Each entry in "bib_entries" for a given article is named "BIB01", "BIB02", etc... and is the key to a dictionary
                     # of values corresponding to identifying data for the particular citation.
@@ -46,27 +48,14 @@ def generate_citation_graph(data_path):
     citations = [{"title": ref, "citation": citation} for ref in refdict for citation in refdict[ref]]
     citations = pd.DataFrame(citations)
     graph = nx.from_pandas_edgelist(citations, source='title', target='citation', create_using=nx.DiGraph)
-    return graph, in_corpus_titles
+    return graph, titles_to_shas
 
-# # Helper functions demonstrating some uses of the graph
+if __name__=='__main__':
+    graph, titles_to_shas = generate_citation_graph('../data')
+    with open('graph.p', 'wb') as f:
+        pickle.dump(graph, f)
+    with open('dict.p', 'wb') as g:
+        pickle.dump(titles_to_shas, g)
 
-
-def get_citation_overlap(g, title1, title2):
-    """
-    Returns the overlap between the citations of two titles.
-
-    :param g: a networkx graph
-    :param title1: article title, a string
-    :param title2: article title, a string
-    :return: overlap of citations between title1 and title2: a set
-    """
-    title1_refs = g.successors(title1)
-    title2_refs = g.successors(title2)
-    if title1 not in in_corpus_titles or title1_refs==[]:
-        print(f"No citation data for {title1}.")
-    elif title2 not in in_corpus_titles or title2_refs==[]:
-        print(f"No citation data for {title2}.")
-    else:
-        return title1_refs.union(title2_refs)
 
 
