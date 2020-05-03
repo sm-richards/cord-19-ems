@@ -21,17 +21,17 @@ def generate_citation_graph(data_path):
     :return: networkx DiGraph object representing citation relationships in the dataset.
     """
     # Keep track of titles corresponding to articles in the corpus, and their corresponding paper IDs
-    titles_to_shas = defaultdict(str)
+    titles_to_ids = defaultdict(int)
 
     refdict = defaultdict(list)
+    i = 0
     for dir, subdir, files in os.walk(data_path):
         for file in files:
             try:
                 with open(os.path.join(dir, file), 'r') as f:
                     data = json.load(f)
                     reftitle = data['metadata']['title'].lower()
-                    titles_to_shas[reftitle] = data['paper_id']
-
+                    titles_to_ids[reftitle] = i
                     # Each entry in "bib_entries" for a given article is named "BIB01", "BIB02", etc... and is the key to a dictionary
                     # of values corresponding to identifying data for the particular citation.
 
@@ -48,14 +48,13 @@ def generate_citation_graph(data_path):
     citations = [{"title": ref, "citation": citation} for ref in refdict for citation in refdict[ref]]
     citations = pd.DataFrame(citations)
     graph = nx.from_pandas_edgelist(citations, source='title', target='citation', create_using=nx.DiGraph)
-    return graph, titles_to_shas
+    return graph
 
 if __name__=='__main__':
-    graph, titles_to_shas = generate_citation_graph('../data')
+    citation_graph, titles_to_ids = generate_citation_graph('../data')
     with open('graph.p', 'wb') as f:
-        pickle.dump(graph, f)
-    with open('dict.p', 'wb') as g:
-        pickle.dump(titles_to_shas, g)
+        pickle.dump(citation_graph, f)
+
 
 
 
