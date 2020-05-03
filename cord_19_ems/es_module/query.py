@@ -255,6 +255,7 @@ def get_results_data(response):
                   'citations': hit.citations,
                   'body': hit.body}
 
+
         # add highlighting
         if 'highlight' in hit.meta:
             result['title'] = hit.meta.highlight.title[0] if 'title' in hit.meta.highlight else hit.title
@@ -280,7 +281,6 @@ def get_results_data(response):
 def documents(res):
     global gresults
     article = gresults[res]
-    print(res, article)
     article_title = article['title']
     for term in article:
         if type(article[term]) is AttrList:
