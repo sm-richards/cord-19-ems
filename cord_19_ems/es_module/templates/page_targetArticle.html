@@ -11,31 +11,44 @@
     padding-bottom:10px;
     clear:left;
 }
+
+    h1 {text-align: center;}
+    h2 {text-align: center;}
+    h3 {text-align: center;}
+    h4 {text-align: center;}
 </style>
 
 <body bgcolor="white">
 <div class="article">
-<h3>{{title|safe}}</h3>
+<h1>{{title|safe}}</h1>
 <div class="article" style="word-wrap:break-word; padding:10px;">
      <pre style="white-space: pre-wrap;"><strong>ID</strong>: {{article['id_num'] | safe}}</pre>
     {% for author in article['authors'][:-1] %}
     {{ author.last }}, {{ author.first }};
     {% endfor %}
+     {% if article['authors'][-1] %}
+      {{ article['authors'][-1].last }}, {{ article['authors'][-1].first }}
+     {% endif %}
 {#    {{ article['authors'][-1].first }} {{ article['authors'][-1].last }}#}
 {% if article['abstract'] !='' %}
-<h3>Abstract</h3>
+<h2>Abstract</h2>
  <pre style="white-space: pre-wrap;"> {{article['abstract'] | safe}}</pre><br>
 {% endif %}
+<hr>
  <pre style="white-space: pre-wrap;"> {{article['body'] | safe}}</pre>
- <h3>References</h3>
+<hr>
+ <h2>References</h2>
  {% for cit in article['citations'] %}
-      {% for author in cit['authors'] %}
+      {% for author in cit['authors'][:-1] %}
     {{ author.last }}, {{ author.first }};
           {% endfor %}
+     {% if cit['authors'][-1] %}
+      {{ cit['authors'][-1].last }}, {{ cit['authors'][-1].first }}.
+     {% endif %}
      {% if cit['in_corpus'] != -1 %}
-         <pre class="sansserif"><a href="/documents/{{ cit['in_corpus']}}" target="_blank">  {{ cit.title|safe }} </a></pre>
+         <a href="/documents/{{ cit['in_corpus']}}" target="_blank">{{ cit.title}}.</a>
      {% else %}
-     {{ cit.title }}
+     {{ cit.title }}.
      {% endif %}
         {{ cit.year }}.<br><br>
 

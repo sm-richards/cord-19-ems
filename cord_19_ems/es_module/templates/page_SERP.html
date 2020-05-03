@@ -147,7 +147,7 @@ p.cannotfind {
     {% if res_num %}
         {% for res in results %}
         <p>
-            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a> score: {{results[res]['score']}} </pre>
+            <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">{{ results[res]['title']|safe }}</a> score: {{results[res]['score']}} </pre>
             {% if results[res]['abstract'] == "" %}
                 <p class="results">{{results[res]['body'] | safe}}</p>
             {% else %}
