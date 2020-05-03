@@ -82,6 +82,7 @@ def results(page):
 
     # Search type is either MORE LIKE THIS or STANDARD SEARCH-----------------------------------------------------------
     if search_type == 'more_like_this_citations':
+        print(tmp_doc_id)
         return more_like_this(page, s, tmp_doc_id)
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)
@@ -198,13 +199,14 @@ def more_like_this(page, s, doc_id):
 
     # get data for each hit, to display on results page
     results = get_results_data(response)
+    if doc_id in results.keys():
+        del results[doc_id]
 
     # calculate percentage citation overlap between each result article and reference article
     # use this to display on the page
     get_citation_overlap_scores(citations, results)
 
     # make the result list available globally
-    gresults = results
 
     # get the total number of matching results
     return render_template('more_like_this.html', results=results, doc_id=doc_id, title=title,
@@ -270,6 +272,7 @@ def get_results_data(response):
         entlist = [re.sub(r"_", " ", ent) for ent in entlist]
         result['entities_list'] = entlist
         result['entities'] = ", ".join(entlist)
+        result['id'] = hit.meta.id
 
         results[hit.meta.id] = result
 
