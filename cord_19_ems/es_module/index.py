@@ -5,7 +5,7 @@ import os
 import pickle
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
-from elasticsearch_dsl import Index, Document, Text, Integer, Long, Nested, InnerDoc
+from elasticsearch_dsl import Index, Document, Text, Integer, Long, Nested, InnerDoc, Boolean
 from elasticsearch_dsl.connections import connections
 from elasticsearch_dsl.analysis import analyzer, token_filter
 import networkx as nx
@@ -13,6 +13,7 @@ from cord_19_ems.notebooks.Citation_Network import generate_citation_graph
 from collections import defaultdict
 import cord_19_ems.es_module.extras as utils
 import langid
+from collections import Counter
 
 # connect to local host server
 connections.create_connection(hosts=['127.0.0.1'])
@@ -63,8 +64,9 @@ class Article(Document):
     body = Text(analyzer=text_analyzer)
     citations = Nested(Citation)            # citations field is a Nested list of Citation objects
     pr = Long()
-    gene_or_genome = Text(analyzer=entity_analyzer)
+    ents = Text(analyzer=entity_analyzer)
     publish_time = Integer()
+    in_english = Boolean()
 
     # override the Document save method to include subclass field definitions
     def save(self, *args, **kwargs):
@@ -72,7 +74,7 @@ class Article(Document):
 
 
 # populate the index
-def buildIndex():
+def build_index():
     """
     buildIndex creates a new film index, deleting any existing index of
     the same name.
@@ -90,16 +92,26 @@ def buildIndex():
     article_index.document(Article)  # register the document mapping
     article_index.create()
 
-    # load articles
+    # load articles from data source
     articles = utils.load_dataset_to_dict(data_dir)
-    titles_to_ids = {v['metadata']['title'].lower():k for k,v in enumerate(articles.values())}
-    # builds a default dictionary mapping article titles to index IDs, with
-    # -1 as the default value for a key error.
-    titles_to_ids = defaultdict(lambda: -1, titles_to_ids)
+
+    # build a default dictionary to map titles do ids (for eventual use in citations 'more like this')
+    titles_to_ids = {v['metadata']['title'].lower(): k for k, v in enumerate(articles.values())}
+    titles_to_ids = defaultdict(lambda: -1, titles_to_ids)  # -1 is default value for a key error
 
     # open ner and metadata dict
     with open(meta_ner_path, 'r') as f:
         meta_ner_all = json.load(f)
+
+    # get entity frequencies (to filter out unique entities)
+    ent_freqs = defaultdict(int)
+    for sha, info in meta_ner_all.items():
+        ent_types = info['entities']  # {GENE: [ent1, ent2], GPE: [ent1, ent2], ...}
+        for type, entlist in ent_types.items():
+            entlist = utils.filter_entities(entlist)  # clean up entities before hashing to freq dict
+            meta_ner_all[sha]['entities'][type] = entlist  # also update original dict with cleaned entities
+            for ent, count in Counter(entlist).items():
+                ent_freqs[ent] += count
 
     def actions():
         for i, article in enumerate(articles.values()):
@@ -107,13 +119,22 @@ def buildIndex():
 
             # extract contents of entity and metadata dict
             if sha in meta_ner_all.keys():  # entities, source, doi, publish_time, has_full_text, journal
-                ent_types = meta_ner_all[sha]['entities']
+                ents = []
+                for type, entlist in meta_ner_all[sha]['entities'].items():
+                    if type in ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE',
+                                'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION',
+                                'DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS',
+                                'SIGN_OR_SYMPTOM', 'LIVESTOCK']:
+                        ents.extend(entlist)
+                ents = [ent for ent in ents if ent_freqs[ent] > 1]  # get only ents that occur > 1 in corpus
+                ents_str = utils.untokenize(ents)  # transform to string type for indexing
+
                 publish_time = utils.extract_year(meta_ner_all[sha]["publish_time"])
-                gene_or_genome = utils.untokenize(ent_types['GENE_OR_GENOME']) \
-                    if 'GENE_OR_GENOME' in ent_types.keys() else ''
+                journal = meta_ner_all[sha]['journal']
             else:
                 publish_time = 0
-                gene_or_genome = ''
+                ents_str = ''
+                journal = ''
 
             # extract contents of article dict
             title = article['metadata']['title'] if 'title' in article['metadata'].keys() else '(Untitled)'
@@ -138,10 +159,11 @@ def buildIndex():
                 "body": body,
                 "authors": authors,
                 "publish_time": publish_time,
+                "journal": journal,
                 "citations": cits,
                 "in_english": in_english,
                 "pr": pr,
-                "gene_or_genome": gene_or_genome
+                "ents": ents_str,
             }
 
     helpers.bulk(es, actions(), raise_on_error=True)  # one doc in corpus contains a NAN value and it has to be ignored.
@@ -153,8 +175,8 @@ def main():
     # if extra datafiles have not been cross-referenced, do this
     if not os.path.isfile(meta_ner_path):
         utils.all_ner_metadata_cross_reference(metadata_path, ner_path, meta_ner_path)
-    buildIndex()
-    print(f"=== Built {index_name} in %s seconds ===" % (time.time() - start_time))
+    build_index()
+    print(f"=== Built {index_name} in {((time.time() - start_time)/float(60))} minutes ===")
 
 
 if __name__ == '__main__':

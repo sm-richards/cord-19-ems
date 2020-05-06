@@ -32,6 +32,7 @@ def results(page):
     global tmp_search_type
     global tmp_min
     global tmp_max
+    global tmp_lang
     global gresults
     global tmp_doc_id
     global tmp_search_operator
@@ -56,20 +57,21 @@ def results(page):
         else:
             text_query = request.form['query']
             authors_query = request.form['authors']
-            # 'search_operator' refers to conjunctive vs disjunctive
-            search_operator = request.form.get('search_operator')
+            lang_query = request.form['in_english']
+            search_operator = request.form.get('search_operator')  # conjunctive or disjunctive search
 
             # handle date range
             mindate_query = request.form['mindate']
-            mindate = int(mindate_query) if len(mindate_query) > 0 else 0
+            mindate_query = int(mindate_query) if len(mindate_query) > 0 else 0
             maxdate_query = request.form['maxdate']
-            maxdate = int(maxdate_query) if len(maxdate_query) > 0 else 99999
+            maxdate_query = int(maxdate_query) if len(maxdate_query) > 0 else 99999
 
             # update global variable template data
             tmp_text = text_query
             tmp_authors = authors_query
-            tmp_min = mindate
-            tmp_max = maxdate
+            tmp_min = mindate_query
+            tmp_max = maxdate_query
+            tmp_lang = lang_query
             tmp_search_operator = search_operator
 
     else:  # request.method == 'GET':
@@ -79,6 +81,7 @@ def results(page):
         authors_query = tmp_authors
         mindate_query = tmp_min if tmp_min > 0 else ""
         maxdate_query = tmp_max if tmp_max < 99999 else ""
+        lang_query = tmp_lang
 
     # Search type is either MORE LIKE THIS or STANDARD SEARCH-----------------------------------------------------------
     if search_type == 'more_like_this_citations':
@@ -90,7 +93,15 @@ def results(page):
         return more_like_this_ents(page, s, tmp_doc_id, single_ent=True)
 
     # ---------------STANDARD SEARCH--------------- #
-    shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query}
+    shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query,
+             'lang': lang_query}
+
+    # match language
+    if lang_query == True:
+        s = s.query('match', in_english=lang_query)
+
+    # match publish time
+    s = s.query('range', publish_time={'gte': mindate_query, 'lte': maxdate_query})
 
     # free text search
     if len(text_query) > 0:
@@ -118,7 +129,7 @@ def results(page):
     result_num = response.hits.total['value']
 
     # get data for each hit, to display on results page
-    results = get_results_data(response)
+    results = populate_results(response)
 
     # make the result list available globally
     gresults = results
@@ -145,9 +156,9 @@ def more_like_this_ents(page, s, doc_id, single_ent=False):
     # execute a query for articles containing matching entities
     if single_ent:
         ent = request.form['ent']
-        s = s.query('multi_match', query=ent, fields=['gene_or_genome'], operator='and', type='cross_fields')
+        s = s.query('multi_match', query=ent, fields=['ents'], operator='and', type='cross_fields')
     else:
-        q = Q("more_like_this", fields=["gene_or_genome"], like=[{"_index": index_name, "_id": doc_id}], min_term_freq=1)
+        q = Q("more_like_this", fields=["ents"], like=[{"_index": index_name, "_id": doc_id}], min_term_freq=1)
         s = s.query(q)
 
     # display results by 10
@@ -159,11 +170,11 @@ def more_like_this_ents(page, s, doc_id, single_ent=False):
     result_num = response.hits.total['value']
 
     # get data for each hit, to display on results page
-    results = get_results_data(response)
+    results = populate_results(response)
 
     # dummy placeholder for citation overlap
     for i in results:
-        results[i]['overlap'] = 0.0
+        results[i]['overlap'] = ""
 
     # make the result list available globally
     gresults = results
@@ -198,7 +209,7 @@ def more_like_this(page, s, doc_id):
     result_num = response.hits.total['value']
 
     # get data for each hit, to display on results page
-    results = get_results_data(response)
+    results = populate_results(response)
     if doc_id in results.keys():
         del results[doc_id]
 
@@ -223,13 +234,6 @@ def get_citation_overlap_scores(citations, results):
         result['overlap'] = overlap
 
 
-## WORK ON LATER
-#def get_entity_overlap_scores(entities, results):
-#    for i in results:
-#        result = results[i]
-#        hit_ents = set()
-
-
 def filter_for_authors(authors_query, s):
     """ Filters an existing search object, s, for documents that match the authors query"""
     authors = authors_query.split(";")
@@ -249,14 +253,13 @@ def filter_for_authors(authors_query, s):
     return s
 
 
-def get_results_data(response):
+def populate_results(response):
     """ Fills out the results metadata for each hit in 'response' """
     results = {}
     for hit in response.hits:
         result = {'score': hit.meta.score,
                   'citations': hit.citations,
                   'body': hit.body}
-
 
         # add highlighting
         if 'highlight' in hit.meta:
@@ -268,10 +271,8 @@ def get_results_data(response):
 
         # get entities
         article = Article.get(id=hit.meta.id, index=index_name)
-        entlist = set(article['gene_or_genome'].split())
-        entlist = [re.sub(r"_", " ", ent) for ent in entlist]
-        result['entities_list'] = entlist
-        result['entities'] = ", ".join(entlist)
+        entlist = list(set(article['ents'].split()))  # remove duplicates
+        result['entities_list'] = [{'query': ent, 'display': re.sub(r"_", " ", ent)} for ent in entlist]
         result['id'] = hit.meta.id
 
         results[hit.meta.id] = result

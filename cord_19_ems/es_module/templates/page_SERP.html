@@ -48,7 +48,7 @@ p.cannotfind {
     border-bottom: 2px dotted black;
 }
 .contents{
-    margin-top:320px;
+    margin-top:275px;
     padding:0px;
     clear:left;
 }
@@ -113,29 +113,34 @@ p.cannotfind {
             <option value="2017">2017</option>
             <option value="2018">2018</option>
             <option value="2019">2019</option>
-        </select><br><br>
+        </select><br>
+
+        <!-- English filter -->
+        <dd> English results only:
+        <input type="radio" id="english" name="in_english" value="true" checked><label for="english">Yes</label>
+        <input type="radio" id="not_english" name="in_english" value="false"><label for="not_english">No</label>
+        </dd><br>
 
         <dd><input type="submit" value="Search"></dd>
          <input type="hidden" name="type" value="search">
     </dl>
     </form>
+</div>
 
-    <dd><p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p></dd>
+<div class="contents">
+    <p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
 
     {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
-        <dd><input style="width:90px;float:left;clear:right" type="submit" value="Previous Page"></dd>
+        <input style="width:90px;float:left;clear:right" type="submit" value="Previous Page">
     </form>
 {% endif %}
 {% if ((res_num/10)|round(0,'ceil')) > page_num %}
     <form action="/results/{{page_num+1}}" name="nextpage" method="get">
-        <dd><input style="width:75px;float:left" type="submit" value="Next Page"></dd>
+        <input style="width:75px;float:left" type="submit" value="Next Page">
     </form>
 {% endif %}
-
-</div>
-
-<div class="contents">
+<br>
 <p>
     {% if stop_len %}
         Ignoring term:
@@ -153,6 +158,7 @@ p.cannotfind {
             {% else %}
                 <p class="results">{{results[res]['abstract'] | safe}}</p>
             {% endif %}
+
             <!-- static list of topis
             <p class="results"><b>topics:</b> <i>{{results[res]['entities'] | safe}}</i></p> -->
 
@@ -161,9 +167,9 @@ p.cannotfind {
             {% for ent in results[res]['entities_list'] %}
                 <form action="/results" name="search" method="post">
                     <input type="hidden" name="query" value="{{ res }}">
-                    <input type="submit" value="{{ent}}">
+                    <input type="submit" value="{{ent['display']}}">
                     <input type="hidden" name="type" id="match_entity" value=match_entity>
-                    <input type="hidden" name="ent" id="ent" value="{{ent}}">
+                    <input type="hidden" name="ent" id="ent" value="{{ent['query']}}">
                     <input type="hidden" name="page_num" value="1" >
                     <input type="hidden" name="title" value="{{ results[res]['title']  }}">
                 </form>

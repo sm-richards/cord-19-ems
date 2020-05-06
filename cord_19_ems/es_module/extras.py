@@ -59,7 +59,7 @@ def extract_year(publish_time):
 
 def untokenize(ent_list):
     if len(ent_list) > 0:
-        ents = " ".join([re.sub(r"{s}", "_", ent) for ent in ent_list])
+        ents = " ".join([re.sub(r"\s", "_", ent) for ent in ent_list])
         return ents
     else:
         return ""
@@ -75,3 +75,15 @@ def load_dataset_to_dict(data_dir):
                     articles[text_data['paper_id']] = text_data
 
     return articles
+
+
+def filter_entities(entlist):
+    filtered_ents = []
+    for ent in entlist:
+        ent = ent.lower()
+        ent = re.sub(r"[^A-Za-z0-9\-]", " ", ent)   # remove non-alphanumeric characters, except hyphens
+        ent = re.sub(r"\s{2,}", " ", ent)           # remove duplicate spaces
+        if len(ent) > 2:                            # remove any entities shorter than 3 characters
+            if not re.match(r"fig", ent):           # remove ent that is 'fig' or 'figure'
+                filtered_ents.append(ent)
+    return filtered_ents

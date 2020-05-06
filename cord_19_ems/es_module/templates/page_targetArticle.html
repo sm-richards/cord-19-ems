@@ -9,7 +9,8 @@
     padding-right:300px;
     padding-top:10px;
     padding-bottom:10px;
-    clear:left;
+    clear-left;
+}
 }
 
     h1 {text-align: center;}
@@ -23,7 +24,10 @@
 <div class="article">
 <h1>{{title|safe}}</h1>
 <div class="article" style="word-wrap:break-word; padding:10px;">
-     <pre style="white-space: pre-wrap;"><strong>ID</strong>: {{article['id_num'] | safe}}</pre>
+    <strong>ID</strong>: {{article['id_num'] | safe}}<br>
+    <strong>Published:</strong> {{article['publish_time'] | safe}}<br>
+    <strong>Journal:</strong> {{article['journal'] | safe}}<br>
+    <strong>Authors:</strong>
     {% for author in article['authors'][:-1] %}
     {{ author.last }}, {{ author.first }};
     {% endfor %}
@@ -31,12 +35,15 @@
       {{ article['authors'][-1].last }}, {{ article['authors'][-1].first }}
      {% endif %}
 {#    {{ article['authors'][-1].first }} {{ article['authors'][-1].last }}#}
+
 {% if article['abstract'] !='' %}
 <h2>Abstract</h2>
- <pre style="white-space: pre-wrap;"> {{article['abstract'] | safe}}</pre><br>
+ <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['abstract'] | safe}}</pre><br>
 {% endif %}
+
+    <h2>Full Text</h2>
 <hr>
- <pre style="white-space: pre-wrap;"> {{article['body'] | safe}}</pre>
+ <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['body'] | safe}}</pre>
 <hr>
  <h2>References</h2>
  {% for cit in article['citations'] %}

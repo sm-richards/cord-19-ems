@@ -1,14 +1,14 @@
 <!doctype html>
 <html>
 <body bgcolor="white">
-<title>More Like {{ title }}</title>
+<title>More Like This</title>
 <style>
+form {
+    display: inline;
+}
 .sansserif {
     font-family: "Times New Roman", Times, sans-serif;
     font-weight: bold;
-}
-form {
-    display: inline;
 }
 p.results {
     color:grey;
@@ -48,13 +48,14 @@ p.cannotfind {
     border-bottom: 2px dotted black;
 }
 .contents{
-    margin-top:320px;
+    margin-top:275px;
     padding:0px;
     clear:left;
 }
 </style>
 <div class="searchbox">
 <h3 class="header"> COVID-19 Literature Search </h3>
+
 <form action="/results" name="search" method="post">
     <dl>
         <dd><textarea rows="2" cols="100" name="query"></textarea>
@@ -111,27 +112,34 @@ p.cannotfind {
             <option value="2017">2017</option>
             <option value="2018">2018</option>
             <option value="2019">2019</option>
-        </select><br><br>
+        </select><br>
+
+        <!-- English filter -->
+        <dd> English results only:
+        <input type="radio" id="english" name="in_english" value="true" checked><label for="english">Yes</label>
+        <input type="radio" id="not_english" name="in_english" value="false"><label for="not_english">No</label>
+        </dd><br>
 
         <dd><input type="submit" value="Search"></dd>
          <input type="hidden" name="type" value="search">
     </dl>
 </form>
-    <dd><p style="font-size:14px">Found {{res_num}} similar documents to "{{ title }}". Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p></dd>
-{% if page_num > 1 %}
+</div>
+
+<div class="contents">
+    <p style="font-size:14px">Found {{res_num}} results. Showing {{ 1+(page_num-1)*10 }} - {% if (10+(page_num-1)*10) > res_num %}{{res_num}}{% else %}{{ 10+(page_num-1)*10 }}{% endif %}</p>
+
+    {% if page_num > 1 %}
     <form action="/results/{{page_num-1}}" name="previouspage" method="get">
-        <dd><input style="width:60px;float:left;clear:right" type="submit" value="Previous"></dd>
+        <input style="width:90px;float:left;clear:right" type="submit" value="Previous Page">
     </form>
 {% endif %}
 {% if ((res_num/10)|round(0,'ceil')) > page_num %}
     <form action="/results/{{page_num+1}}" name="nextpage" method="get">
-        <dd><input style="width:60px;float:left" type="submit" value="Next"></dd>
+        <input style="width:75px;float:left" type="submit" value="Next Page">
     </form>
 {% endif %}
-
-</div>
-
-<div class="contents">
+<br>
 <p>
     {% if stop_len %}
         Ignoring term:
@@ -143,24 +151,24 @@ p.cannotfind {
     {% if res_num %}
         {% for res in results %}
             <ul>
-                <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a>    Percent shared citations: {{ '%0.2f'|format((results[res]['overlap'] * 100)|float) }} % </pre>
+                <pre class="sansserif"><a href="/documents/{{res}}" target="_blank">  {{ results[res]['title']|safe }} </a> {% if results[res]['overlap'] != "" %} Percent shared citations: {{ '%0.2f'|format((results[res]['overlap'] * 100)|float) }} % {% endif %}</pre>
                 {% if results[res]['abstract'] == "" %}
                     <p class="results">{{results[res]['body'] | safe}}</p>
                 {% else %}
                     <p class="results">{{results[res]['abstract'] | safe}}</p>
                 {% endif %}
 
-                <!-- entity links -->
+                <!-- tag list of entities -->
                 <p class="topics"><b>topics:</b>
                 {% for ent in results[res]['entities_list'] %}
-                <form action="/results" name="search" method="post">
-                    <input type="hidden" name="query" value="{{ res }}">
-                    <input type="submit" value="{{ent}}">
-                    <input type="hidden" name="type" id="match_entity" value=match_entity>
-                    <input type="hidden" name="ent" id="ent" value="{{ent}}">
-                    <input type="hidden" name="page_num" value="1" >
-                    <input type="hidden" name="title" value="{{ results[res]['title']  }}">
-                </form>
+                    <form action="/results" name="search" method="post">
+                        <input type="hidden" name="query" value="{{ res }}">
+                        <input type="submit" value="{{ent['display']}}">
+                        <input type="hidden" name="type" id="match_entity" value=match_entity>
+                        <input type="hidden" name="ent" id="ent" value="{{ent['query']}}">
+                        <input type="hidden" name="page_num" value="1" >
+                        <input type="hidden" name="title" value="{{ results[res]['title']  }}">
+                    </form>
                 {% endfor %}
                 </p>
 

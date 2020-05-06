@@ -24,3 +24,4 @@ Werkzeug==1.0.0
 Wikipedia-API==0.5.3
 wptools==0.4.17
 networkx
+langid
