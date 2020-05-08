@@ -106,7 +106,7 @@ def results(page):
     # free text search
     if len(text_query) > 0:
         s = s.query('multi_match', query=text_query, type='cross_fields',
-                fields=['title', 'abstract', 'body'], operator=search_operator)
+                fields=['title', 'abstract', 'body', 'anchor_text'], operator=search_operator)
 
     # authors search
     if len(authors_query) > 0:

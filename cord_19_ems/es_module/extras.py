@@ -1,12 +1,30 @@
+import functools
+import time
 import os
 import re
 import csv
 from collections import defaultdict
 import jsonlines
 import json
+import pickle
+from collections import Counter
 
+def timer(func):
+    """ Creates a wrapper around functions so that, when 'timer' is called on them,
+    a report of the elapsed time is printed after the function executes."""
+    @functools.wraps(func)
+    def wrapper_timer(*args, **kwargs):
+        start_t = time.perf_counter()
+        f_value = func(*args, **kwargs)
+        elapsed_t = time.perf_counter() - start_t
+        mins = elapsed_t // 60
+        print(f'{func.__name__} elapsed time: {mins} minutes, {elapsed_t - mins * 60:0.2f} seconds')
+        return f_value
+
+    return wrapper_timer
 
 # create a dict mapping sha's to entities and other metadata for all sources
+@timer
 def all_ner_metadata_cross_reference(metadata_csv, ner_json, out):
     # open json, get ents for each paper by doc_ids
     ner_data = {}
@@ -47,7 +65,6 @@ def all_ner_metadata_cross_reference(metadata_csv, ner_json, out):
 
     return article_data
 
-
 def extract_year(publish_time):
     m = re.match(r"[12][0-9][0-9][0-9]", publish_time)
     if m:
@@ -56,7 +73,6 @@ def extract_year(publish_time):
         return 0
     return yr
 
-
 def untokenize(ent_list):
     if len(ent_list) > 0:
         ents = " ".join([re.sub(r"\s", "_", ent) for ent in ent_list])
@@ -64,7 +80,7 @@ def untokenize(ent_list):
     else:
         return ""
 
-
+@timer
 def load_dataset_to_dict(data_dir):
     articles = {}
     for dirname, subdirs, files in os.walk(data_dir):
@@ -74,8 +90,8 @@ def load_dataset_to_dict(data_dir):
                     text_data = json.load(f)
                     articles[text_data['paper_id']] = text_data
 
-    return articles
-
+    with open('articles.p', 'wb') as f:
+        pickle.dump(articles, f)
 
 def filter_entities(entlist):
     filtered_ents = []
@@ -87,3 +103,42 @@ def filter_entities(entlist):
             if not re.match(r"fig", ent):           # remove ent that is 'fig' or 'figure'
                 filtered_ents.append(ent)
     return filtered_ents
+
+@timer
+def get_anchor_text(articles, titles_to_ids):
+    anchor_text_dict = defaultdict(list)
+    for i, article in enumerate(articles.values()):
+        cit_nums = {refname: article['bib_entries'][refname]['title'] for refname in article['bib_entries'].keys()}
+        texts = [(sect['text'], sect['cite_spans']) for sect in article['body_text'] if sect['cite_spans'] != []]
+        for text, cite_spans in texts:
+            for span in cite_spans:
+                ref = span['ref_id']
+                start = span['start']
+                end = span['end']
+                if ref is not None:
+                    name = cit_nums[ref].lower()
+                else:
+                    name == 'None'
+                if name in titles_to_ids:
+                    while start >=0 and text[start] != '.':
+                        start -= 1
+                    while end < len(text) and text[end] != '.':
+                        end += 1
+                    surrounding_text = text[start:end]
+                    anchor_text_dict[name].append(surrounding_text)
+    return anchor_text_dict
+
+
+@timer
+def get_entity_counts(meta_ner_all):
+    ent_freqs = defaultdict(int)
+    for sha, info in meta_ner_all.items():
+        ent_types = info['entities']  # {GENE: [ent1, ent2], GPE: [ent1, ent2], ...}
+        for type, entlist in ent_types.items():
+            entlist = filter_entities(entlist)  # clean up entities before hashing to freq dict
+            meta_ner_all[sha]['entities'][type] = entlist  # also update original dict with cleaned entities
+            for ent, count in Counter(entlist).items():
+                ent_freqs[ent] += count
+    if not os.path.exists('entity_counts.p'):
+        with open('entity_counts.p', 'wb') as f:
+            pickle.dump(ent_freqs.f)

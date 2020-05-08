@@ -12,6 +12,7 @@ import networkx as nx
 from cord_19_ems.notebooks.Citation_Network import generate_citation_graph
 from collections import defaultdict
 import cord_19_ems.es_module.extras as utils
+from cord_19_ems.es_module.extras import timer
 import langid
 from collections import Counter
 
@@ -29,6 +30,9 @@ meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
 
 # name of index
 index_name = 'another_covid_index'
+
+entity_types = ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK']
+entity_types = set(entity_types)
 
 
 # "text_analyzer" tokenizer splits at word boundaries, preserving internal hyphens.
@@ -64,6 +68,7 @@ class Article(Document):
     body = Text(analyzer=text_analyzer)
     citations = Nested(Citation)            # citations field is a Nested list of Citation objects
     pr = Long()
+    anchor_text = Text(analyzer=text_analyzer, boost=3)
     ents = Text(analyzer=entity_analyzer)
     publish_time = Integer()
     in_english = Boolean()
@@ -74,6 +79,7 @@ class Article(Document):
 
 
 # populate the index
+@timer
 def build_index():
     """
     buildIndex creates a new film index, deleting any existing index of
@@ -93,38 +99,36 @@ def build_index():
     article_index.create()
 
     # load articles from data source
-    articles = utils.load_dataset_to_dict(data_dir)
+    if not os.path.exists('articles.p'):
+        utils.load_dataset_to_dict(data_dir)
+    f = open('articles.p', 'rb')
+    articles = pickle.load(f)
+    f.close()
 
     # build a default dictionary to map titles do ids (for eventual use in citations 'more like this')
     titles_to_ids = {v['metadata']['title'].lower(): k for k, v in enumerate(articles.values())}
     titles_to_ids = defaultdict(lambda: -1, titles_to_ids)  # -1 is default value for a key error
 
-    # open ner and metadata dict
+    #get anchor text:
+    anchor_text_dict = utils.get_anchor_text(articles, titles_to_ids)
+
+        # open ner and metadata dict
     with open(meta_ner_path, 'r') as f:
         meta_ner_all = json.load(f)
 
     # get entity frequencies (to filter out unique entities)
     ent_freqs = defaultdict(int)
-    for sha, info in meta_ner_all.items():
-        ent_types = info['entities']  # {GENE: [ent1, ent2], GPE: [ent1, ent2], ...}
-        for type, entlist in ent_types.items():
-            entlist = utils.filter_entities(entlist)  # clean up entities before hashing to freq dict
-            meta_ner_all[sha]['entities'][type] = entlist  # also update original dict with cleaned entities
-            for ent, count in Counter(entlist).items():
-                ent_freqs[ent] += count
+    get_entity_counts(ent_freqs, meta_ner_all)
 
     def actions():
         for i, article in enumerate(articles.values()):
             sha = article['paper_id']
 
             # extract contents of entity and metadata dict
-            if sha in meta_ner_all.keys():  # entities, source, doi, publish_time, has_full_text, journal
+            if sha in set(meta_ner_all.keys()):  # entities, source, doi, publish_time, has_full_text, journal
                 ents = []
                 for type, entlist in meta_ner_all[sha]['entities'].items():
-                    if type in ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE',
-                                'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION',
-                                'DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS',
-                                'SIGN_OR_SYMPTOM', 'LIVESTOCK']:
+                    if type in entity_types:
                         ents.extend(entlist)
                 ents = [ent for ent in ents if ent_freqs[ent] > 1]  # get only ents that occur > 1 in corpus
                 ents_str = utils.untokenize(ents)  # transform to string type for indexing
@@ -144,6 +148,7 @@ def build_index():
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
+            anchor_text = ' '.join(anchor_text_dict[title.lower()])
             body = '\n\n'.join([sect['text'] for sect in article['body_text']])
 
             # check that article is in English
@@ -163,21 +168,29 @@ def build_index():
                 "citations": cits,
                 "in_english": in_english,
                 "pr": pr,
+                "anchor_text": anchor_text,
                 "ents": ents_str,
             }
 
     helpers.bulk(es, actions(), raise_on_error=True)  # one doc in corpus contains a NAN value and it has to be ignored.
 
+@timer
+def get_entity_counts(ent_freqs, meta_ner_all):
+    for sha, info in meta_ner_all.items():
+        ent_types = info['entities']  # {GENE: [ent1, ent2], GPE: [ent1, ent2], ...}
+        for type, entlist in ent_types.items():
+            entlist = utils.filter_entities(entlist)  # clean up entities before hashing to freq dict
+            meta_ner_all[sha]['entities'][type] = entlist  # also update original dict with cleaned entities
+            for ent, count in Counter(entlist).items():
+                ent_freqs[ent] += count
+
 
 # command line invocation builds index and prints the running time.
 def main():
-    start_time = time.time()
     # if extra datafiles have not been cross-referenced, do this
     if not os.path.isfile(meta_ner_path):
         utils.all_ner_metadata_cross_reference(metadata_path, ner_path, meta_ner_path)
     build_index()
-    print(f"=== Built {index_name} in {((time.time() - start_time)/float(60))} minutes ===")
-
 
 if __name__ == '__main__':
     main()
