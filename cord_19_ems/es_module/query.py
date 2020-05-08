@@ -85,7 +85,6 @@ def results(page):
 
     # Search type is either MORE LIKE THIS or STANDARD SEARCH-----------------------------------------------------------
     if search_type == 'more_like_this_citations':
-        print(tmp_doc_id)
         return more_like_this(page, s, tmp_doc_id)
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)

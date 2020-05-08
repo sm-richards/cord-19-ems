@@ -1,16 +1,16 @@
 
 <!doctype html>
 <style>
-    .article{
-    margin-top:0px;
-    margin-right:0px
-    margin-left:0px;
-    padding-left:300px;
-    padding-right:300px;
-    padding-top:10px;
-    padding-bottom:10px;
-    clear-left;
+    .content{
+    float:left;
+        width:80%;
 }
+    .sidebar{
+        background:#BFD9E2;
+    float:left;
+        width:20%;
+        left:5px;
+        right:5px;
 }
 
     h1 {text-align: center;}
@@ -21,9 +21,20 @@
 
 <body bgcolor="white">
 <title>{{ title }}</title>
-<div class="article">
+<div id="container">
+<div class="sidebar">
+<h1>Navigation</h1>
+<h2>Jump to...</h2>
+<a href="#Full Text">Full Text</a><br>
+<a href="#Abstract">Abstract</a><br>
+<a href="#References">References</a><br><br>
+<h2> See this article cited in context:</h2>
+       {% for cit in article['cited_by'] %}
+     <pre style="white-space: pre-wrap"><a href="/documents/{{cit.id}}" target="_blank">"...{{cit.text}}..."</a></pre>
+        {% endfor %}
+</div>
+<div class="content">
 <h1>{{title|safe}}</h1>
-<div class="article" style="word-wrap:break-word; padding:10px;">
     <strong>ID</strong>: {{article['id_num'] | safe}}<br>
     <strong>Published:</strong> {{article['publish_time'] | safe}}<br>
     <strong>Journal:</strong> {{article['journal'] | safe}}<br>
@@ -37,14 +48,16 @@
 {#    {{ article['authors'][-1].first }} {{ article['authors'][-1].last }}#}
 
 {% if article['abstract'] !='' %}
+    <a name="Abstract">
 <h2>Abstract</h2>
- <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['abstract'] | safe}}</pre><br>
+ <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['abstract'] | safe}}</pre><br></a>
 {% endif %}
-
-    <h2>Full Text</h2>
+<a name="Full Text">
+    <h2>Full Text</h2></a>
 <hr>
  <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['body'] | safe}}</pre>
 <hr>
+<a name="References">
  <h2>References</h2>
  {% for cit in article['citations'] %}
       {% for author in cit['authors'][:-1] %}
@@ -61,7 +74,9 @@
         {{ cit.year }}.<br><br>
 
     {% endfor %}
+</a>
 
+ </div>
 </div>
-</div>
+
 </body>
