@@ -108,6 +108,7 @@ def filter_entities(entlist):
 def get_anchor_text(articles, titles_to_ids):
     anchor_text_dict = defaultdict(list)
     for i, article in enumerate(articles.values()):
+        # articles cited by this article
         cit_nums = {refname: article['bib_entries'][refname]['title'] for refname in article['bib_entries'].keys()}
         texts = [(sect['text'], sect['cite_spans']) for sect in article['body_text'] if sect['cite_spans'] != []]
         for text, cite_spans in texts:
@@ -117,15 +118,14 @@ def get_anchor_text(articles, titles_to_ids):
                 end = span['end']
                 if ref is not None:
                     name = cit_nums[ref].lower()
-                else:
-                    name == 'None'
-                if name in titles_to_ids:
-                    while start >=0 and text[start] != '.':
-                        start -= 1
-                    while end < len(text) and text[end] != '.':
-                        end += 1
-                    surrounding_text = text[start:end]
-                    anchor_text_dict[name].append(surrounding_text)
+                    if name in titles_to_ids and not name.isspace() and name is not '':
+                        while start > 0 and text[start] != '.':
+                            start -= 1
+                        while end < len(text) and text[end] != '.':
+                            end += 1
+                        surrounding_text = text[start:end]
+                        if surrounding_text !='':
+                            anchor_text_dict[name].append({"id": i, "text": surrounding_text})
     return anchor_text_dict
 
 

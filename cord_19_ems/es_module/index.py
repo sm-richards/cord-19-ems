@@ -20,7 +20,8 @@ from collections import Counter
 connections.create_connection(hosts=['127.0.0.1'])
 
 # create elasticsearch object
-es = Elasticsearch(timeout=30, max_retries=10, retry_on_timeout=True)
+es = Elasticsearch(timeout=30, max_retries=10, retry_on_timeout=True, mapping_nested_objects_limit=15000)
+
 
 # data paths
 data_dir = '../data'
@@ -46,9 +47,13 @@ text_analyzer = analyzer('custom', tokenizer='pattern', pattern=r"\b[\w-]+\b",
 entity_analyzer = analyzer('custom', tokenizer='whitespace', filter=['lowercase'])
 
 
+class AnchorText(InnerDoc):
+    text = Text(analyzer='standard')
+    id = Integer()
+
 # special datatype for author names. They contain a "first_name" and "last_name" field.
 class Name(InnerDoc):
-    first = Text(analyzer='standard')
+    first = Text()
     last = Text()
 
 
@@ -68,7 +73,8 @@ class Article(Document):
     body = Text(analyzer=text_analyzer)
     citations = Nested(Citation)            # citations field is a Nested list of Citation objects
     pr = Long()
-    anchor_text = Text(analyzer=text_analyzer, boost=3)
+    cited_by = Nested(AnchorText)
+    anchor_text = Text(analyzer='standard')
     ents = Text(analyzer=entity_analyzer)
     publish_time = Integer()
     in_english = Boolean()
@@ -112,6 +118,14 @@ def build_index():
     #get anchor text:
     anchor_text_dict = utils.get_anchor_text(articles, titles_to_ids)
 
+    # print(len(anchor_text_dict.keys()))
+    # for name in anchor_text_dict:
+    #     if len(anchor_text_dict[name]) > 1000:
+    #         print(f"name: {name}, len: {len(anchor_text_dict[name])}")
+    #         for id, text in anchor_text_dict[name]:
+    #             print(id)
+    #             print(text)
+
         # open ner and metadata dict
     with open(meta_ner_path, 'r') as f:
         meta_ner_all = json.load(f)
@@ -148,7 +162,8 @@ def build_index():
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
-            anchor_text = ' '.join(anchor_text_dict[title.lower()])
+            anchor_text = ' '.join([cit['text'] for cit in anchor_text_dict[title.lower()]])
+            cited_by = anchor_text_dict[title.lower()]
             body = '\n\n'.join([sect['text'] for sect in article['body_text']])
 
             # check that article is in English
@@ -169,6 +184,7 @@ def build_index():
                 "in_english": in_english,
                 "pr": pr,
                 "anchor_text": anchor_text,
+                "cited_by": cited_by,
                 "ents": ents_str,
             }
 
