@@ -1,81 +1,108 @@
-
 <!doctype html>
 <style>
     .content{
     float:left;
-        width:80%;
+        width:85%;
 }
     .sidebar{
         background:#BFD9E2;
-    float:left;
-        width:20%;
-        left:5px;
-        right:5px;
+        float:left;
+        width:15%;
+        margin-bottom: -5000px;
+        padding-bottom: 5000px;
 }
 
-    h1 {text-align: center;}
-    h2 {text-align: center;}
-    h3 {text-align: center;}
-    h4 {text-align: center;}
-</style>
+    h1 {text-align: center; font-family:Times}
+    h2 {text-align: center; font-family:Times}
+    h3 {text-align: left; padding-left: 30px; margin-bottom: 0}
+    h4 {text-align: center; font-family:Times}
 
+    p.padding {
+        padding-left: 30px;
+        padding-right: 30px;
+        margin-top: 5px;
+    }
+</style>
 <body bgcolor="white">
 <title>{{ title }}</title>
 <div id="container">
 <div class="sidebar">
-<h1>Navigation</h1>
-<h2>Jump to...</h2>
-<a href="#Full Text">Full Text</a><br>
-<a href="#Abstract">Abstract</a><br>
-<a href="#References">References</a><br><br>
-<h2> See this article cited in context:</h2>
-       {% for cit in article['cited_by'] %}
-     <pre style="white-space: pre-wrap"><a href="/documents/{{cit.id}}" target="_blank">"...{{cit.text}}..."</a></pre>
-        {% endfor %}
+<h2>Navigation</h2>
+<hr>
+<h4>Jump to...</h4>
+{% for sect in article['body'] %}
+    <p class="padding" style="text-align: center"><a href="#{{sect['name']}}">{{sect['name']}}</a></p>
+{% endfor %}
+
+    <p class="padding" style="text-align: center"><a href="#References">References</a></p>
+
+{% if article['cited_by'] !=[] %}
+<h4> See this article cited in context:</h4>
+    {% for cit in article['cited_by'] %}
+        <p class="padding">
+            <a href="/documents/{{cit.id}}" target="_blank">"...{{cit.text}}..."</a>
+        </p>
+    {% endfor %}
+{% endif %}
+</p>
 </div>
+
 <div class="content">
-<h1>{{title|safe}}</h1>
-    <strong>ID</strong>: {{article['id_num'] | safe}}<br>
-    <strong>Published:</strong> {{article['publish_time'] | safe}}<br>
-    <strong>Journal:</strong> {{article['journal'] | safe}}<br>
-    <strong>Authors:</strong>
+    <h1>{{title|safe}}</h1>
+    <p class="padding"><strong>ID</strong>: {{article['id_num'] | safe}}</p>
+    <p class="padding"><strong>Published:</strong> {{article['publish_time'] | safe}}</p>
+    <p class="padding"> <strong>Journal:</strong> {{article['journal'] | safe}}</p>
+    <p class="padding"><strong>Authors:</strong>
     {% for author in article['authors'][:-1] %}
-    {{ author.last }}, {{ author.first }};
+        {{ author.last }}, {{ author.first }};
     {% endfor %}
      {% if article['authors'][-1] %}
-      {{ article['authors'][-1].last }}, {{ article['authors'][-1].first }}
+         {{ article['authors'][-1].last }}, {{ article['authors'][-1].first }}</p>
      {% endif %}
-{#    {{ article['authors'][-1].first }} {{ article['authors'][-1].last }}#}
 
 {% if article['abstract'] !='' %}
+    <br><br>
     <a name="Abstract">
-<h2>Abstract</h2>
- <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['abstract'] | safe}}</pre><br></a>
-{% endif %}
-<a name="Full Text">
-    <h2>Full Text</h2></a>
-<hr>
- <pre style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['body'] | safe}}</pre>
-<hr>
-<a name="References">
- <h2>References</h2>
- {% for cit in article['citations'] %}
-      {% for author in cit['authors'][:-1] %}
-    {{ author.last }}, {{ author.first }};
-          {% endfor %}
-     {% if cit['authors'][-1] %}
-      {{ cit['authors'][-1].last }}, {{cit['authors'][-1].first }}.
-     {% endif %}
-     {% if cit['in_corpus'] != -1 %}
-         <a href="/documents/{{cit['in_corpus']}}" target="_blank">{{cit.title}}.</a>
-     {% else %}
-     {{ cit.title }}.
-     {% endif %}
-        {{ cit.year }}.<br><br>
-
-    {% endfor %}
+        <h2>Abstract</h2>
+     <p class = "padding" style="white-space: pre-wrap; font-family: Times, sans-serif"> {{article['abstract'] | safe}}</p><br><br>
 </a>
 
+{% endif %}
+<a name="Full Text">
+    <h2>Full Text</h2>
+    <hr>
+    {% for sect in article['body'] %}
+        <a name="{{ sect['name'] }}">
+           <h3>{{ sect['name'] }}</h3>
+           <p class = "padding" style="white-space: pre-wrap; font-family: Times, sans-serif">
+            {{'\n\n'.join(sect['text']) | safe}}
+           </p>
+        </a>
+    {% endfor %}
+</a>
+<hr>
+
+<a name="References">
+ <h2>References</h2>
+<p class="padding">
+ {% for cit in article['citations'] %}
+      {% for author in cit['authors'][:-1] %}
+          {{ author.last }}, {{ author.first }};
+      {% endfor %}
+     {% if cit['authors'][-1] %}
+         {{ cit['authors'][-1].last }}, {{cit['authors'][-1].first }}.
+     {% else %}.
+     {% endif %}
+     {% if cit['in_corpus'] != -1 %}
+         <i><a href="/documents/{{cit['in_corpus']}}" target="_blank">{{cit.title}}.</a></i>
+     {% else %}
+         <i>{{ cit.title }}.</i>
+     {% endif %}
+     {{ cit.year }}.<br><br>
+ {% endfor %}
+</p>
+</a>
+</p>
  </div>
 </div>
 
