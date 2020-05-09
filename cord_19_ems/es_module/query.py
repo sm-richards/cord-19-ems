@@ -118,6 +118,10 @@ def results(page):
     # if no query is passed in, return all documents
     else:
         s = s.query('match_all')
+        s = s.sort()
+        s = s.sort(
+            {"pr": {"order": "desc"}}
+        )
 
     # highlight
     s = s.highlight_options(pre_tags='<mark>', post_tags='</mark>')
@@ -279,7 +283,7 @@ def populate_results(response):
         entlist = list(set(article['ents'].split()))  # remove duplicates
         result['entities_list'] = [{'query': ent, 'display': re.sub(r"_", " ", ent)} for ent in entlist]
         result['id'] = hit.meta.id
-
+        result['pr'] = hit.pr
         results[hit.meta.id] = result
 
     return results
