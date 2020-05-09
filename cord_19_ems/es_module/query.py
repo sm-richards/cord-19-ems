@@ -36,6 +36,7 @@ def results(page):
     global gresults
     global tmp_doc_id
     global tmp_search_operator
+    global tmp_ent
 
     # instantiate a search object
     s = Search(index=index_name)
@@ -50,8 +51,12 @@ def results(page):
         tmp_search_type = search_type
 
         # More Like This Queries
-        if search_type !='search':
-            tmp_doc_id = request.form['query']
+        if search_type !="search":
+            doc_id = request.form['query']
+            tmp_doc_id = doc_id
+            if search_type=='match_entity':
+                ent = request.form['ent']
+                tmp_ent = ent
 
         # Standard Queries
         else:
@@ -75,7 +80,10 @@ def results(page):
             tmp_search_operator = search_operator
 
     else:  # request.method == 'GET':
-        search_operator = tmp_search_operator
+        if tmp_search_operator:
+            search_operator = tmp_search_operator
+        if tmp_ent:
+            ent = tmp_ent
         search_type = tmp_search_type
         text_query = tmp_text
         authors_query = tmp_authors
@@ -89,7 +97,7 @@ def results(page):
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)
     elif search_type == 'match_entity':
-        return more_like_this_ents(page, s, tmp_doc_id, single_ent=True)
+        return more_like_this_ents(page, s, tmp_doc_id, single_ent=True, ent=ent)
 
     # ---------------STANDARD SEARCH--------------- #
     shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query,
@@ -105,7 +113,7 @@ def results(page):
     # free text search
     if len(text_query) > 0:
         s = s.query('multi_match', query=text_query, type='cross_fields',
-                fields=['title', 'abstract', 'body', 'anchor_text'], operator=search_operator)
+                fields=['title', 'abstract', 'body_text', 'anchor_text'], operator=search_operator)
 
     # authors search
     if len(authors_query) > 0:
@@ -147,14 +155,13 @@ def results(page):
                                page_num=page, queries=shows)
 
 
-def more_like_this_ents(page, s, doc_id, single_ent=False):
+def more_like_this_ents(page, s, doc_id, single_ent=False, ent=None):
     global gresults
     article = Article.get(id=doc_id, index=index_name)
     title = article['title']
 
     # execute a query for articles containing matching entities
     if single_ent:
-        ent = request.form['ent']
         s = s.query('multi_match', query=ent, fields=['ents'], operator='and', type='cross_fields')
     else:
         q = Q("more_like_this", fields=["ents"], like=[{"_index": index_name, "_id": doc_id}], min_term_freq=1)
