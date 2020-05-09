@@ -20,7 +20,7 @@ from collections import Counter
 connections.create_connection(hosts=['127.0.0.1'])
 
 # create elasticsearch object
-es = Elasticsearch(timeout=30, max_retries=10, retry_on_timeout=True, mapping_nested_objects_limit=15000)
+es = Elasticsearch(timeout=100, max_retries=10, retry_on_timeout=True, mapping_nested_objects_limit=15000)
 
 
 # data paths
@@ -64,13 +64,16 @@ class Citation(InnerDoc):
     in_corpus = Integer()
     authors = Nested(Name)
 
+class Section(InnerDoc):
+    text = Text(analyzer=text_analyzer)
+    name = Text(analyzer='keyword')
 
 class Article(Document):
     id_num = Text(analyzer='standard')
     authors = Nested(Name)                  # authors field is a Nested list of Name objects
     title = Text(analyzer=text_analyzer, boost=3)
     abstract = Text(analyzer=text_analyzer)
-    body = Text(analyzer=text_analyzer)
+    body = Nested(Section)
     citations = Nested(Citation)            # citations field is a Nested list of Citation objects
     pr = Long()
     cited_by = Nested(AnchorText)
@@ -118,14 +121,6 @@ def build_index():
     #get anchor text:
     anchor_text_dict = utils.get_anchor_text(articles, titles_to_ids)
 
-    # print(len(anchor_text_dict.keys()))
-    # for name in anchor_text_dict:
-    #     if len(anchor_text_dict[name]) > 1000:
-    #         print(f"name: {name}, len: {len(anchor_text_dict[name])}")
-    #         for id, text in anchor_text_dict[name]:
-    #             print(id)
-    #             print(text)
-
         # open ner and metadata dict
     with open(meta_ner_path, 'r') as f:
         meta_ner_all = json.load(f)
@@ -163,11 +158,17 @@ def build_index():
             pr = ddict[article['metadata']['title']]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
             anchor_text = ' '.join([cit['text'] for cit in anchor_text_dict[title.lower()]])
+            section_dict = defaultdict(list)
+            for txt in article['body_text']:
+                section = txt['section']
+                section_dict[section].append(txt['text'])
+            body = [{"name": k, "text": v} for k,v in section_dict.items()]
             cited_by = anchor_text_dict[title.lower()]
-            body = '\n\n'.join([sect['text'] for sect in article['body_text']])
+
+            body_text = ' '.join([sect['text'] for sect in article['body_text']])
 
             # check that article is in English
-            in_english = (langid.classify(body)[0] == 'en')
+            in_english = (langid.classify(body_text)[0] == 'en')
 
             yield {
                 "_index": index_name,
@@ -177,6 +178,7 @@ def build_index():
                 "id_num": sha,
                 "abstract": abstract,
                 "body": body,
+                "body_text": body_text,
                 "authors": authors,
                 "publish_time": publish_time,
                 "journal": journal,
