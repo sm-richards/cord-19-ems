@@ -265,7 +265,7 @@ def populate_results(response):
     for hit in response.hits:
         result = {'score': hit.meta.score,
                   'citations': hit.citations,
-                  'body': hit.body}
+                  'body_text': hit.body_text}
 
         # add highlighting
         if 'highlight' in hit.meta:
