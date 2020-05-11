@@ -7,10 +7,10 @@ from elasticsearch_dsl import Q
 from index import Article
 from elasticsearch_dsl.utils import AttrList, AttrDict
 from elasticsearch_dsl import Search
-import re
+import re, argparse
 
 app = Flask(__name__)
-index_name = "another_covid_index"
+index_name = ""
 
 # initialize global variables for rendering page
 tmp_text = ""
@@ -295,4 +295,8 @@ def documents(res):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Startup and run query page for CORD-19 database")
+    parser.add_argument('index_name', help="Name of the index which you created when you ran index.py")
+    args = parser.parse_args()
+    index_name = args.index_name
     app.run(debug=True)

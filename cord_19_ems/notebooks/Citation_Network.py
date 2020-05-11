@@ -3,8 +3,7 @@
 See https://networkx.github.io/documentation/networkx-2.0/index.html for documentation on
 how to use DiGraph objects in networkx. """
 
-import json
-import os
+import json, argparse, os
 from collections import defaultdict
 
 import networkx as nx
@@ -51,10 +50,9 @@ def generate_citation_graph(data_path):
     return graph
 
 if __name__=='__main__':
-    citation_graph = generate_citation_graph('../data')
+    parser = argparse.ArgumentParser(description="Create citation graph from CORD-19 data")
+    parser.add_argument('data_dir_path', help="Path to directory which holds CORD-19 data files")
+    args = parser.parse_args()
+    citation_graph = generate_citation_graph(args.data_dir_path)
     with open('graph.p', 'wb') as f:
         pickle.dump(citation_graph, f)
-
-
-
-

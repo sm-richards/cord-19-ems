@@ -1,8 +1,5 @@
 from __future__ import absolute_import
-import json
-import time
-import os
-import pickle
+import json, time, os, pickle, argparse, langid
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
 from elasticsearch_dsl import Index, Document, Text, Integer, Long, Nested, InnerDoc, Boolean
@@ -13,7 +10,6 @@ from cord_19_ems.notebooks.Citation_Network import generate_citation_graph
 from collections import defaultdict
 import cord_19_ems.es_module.extras as utils
 from cord_19_ems.es_module.extras import timer
-import langid
 from collections import Counter
 
 # connect to local host server
@@ -22,15 +18,6 @@ connections.create_connection(hosts=['127.0.0.1'])
 # create elasticsearch object
 es = Elasticsearch(timeout=100, max_retries=10, retry_on_timeout=True, mapping_nested_objects_limit=15000)
 
-
-# data paths
-data_dir = '../data'
-metadata_path = '../data_extras/all_sources_metadata_2020-03-13.csv'
-ner_path = '../data_extras/CORD-NER-ner.json'
-meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
-
-# name of index
-index_name = 'another_covid_index'
 
 entity_types = ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK']
 entity_types = set(entity_types)
@@ -55,7 +42,6 @@ class AnchorText(InnerDoc):
 class Name(InnerDoc):
     first = Text()
     last = Text()
-
 
 # special datatype for Citations They contain a "title" and "year" field.
 class Citation(InnerDoc):
@@ -211,4 +197,16 @@ def main():
     build_index()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Setup and create index for CORD-19 ES")
+    parser.add_argument('index_name', help="Name of index that will be created by running this program")
+    parser.add_argument('data_dir_path', help="Path to directory which holds CORD-19 data files")
+    parser.add_argument('metadata_path', help="Path to csv file which holds metadata information")
+    parser.add_argument('ner_path', help="Path to json file which holds the CORD-NER data")
+    parser.add_argument('meta_ner_path', help="Path to json file which holds cross referencing information over all sources")
+    args = parser.parse_args()
+    data_dir = args.data_dir_path
+    metadata_path = args.metadata_path
+    ner_path = args.ner_path
+    meta_ner_path = args.meta_ner_path
+    index_name = args.index_name
     main()
