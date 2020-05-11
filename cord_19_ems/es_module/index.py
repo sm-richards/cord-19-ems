@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import json, time, os, pickle, argparse, langid
 from elasticsearch import Elasticsearch
 from elasticsearch import helpers
-from elasticsearch_dsl import Index, Document, Text, Integer, Long, Nested, InnerDoc, Boolean
+from elasticsearch_dsl import Index, Document, Text, Integer, Float, Nested, InnerDoc, Boolean
 from elasticsearch_dsl.connections import connections
 from elasticsearch_dsl.analysis import analyzer, token_filter
 import networkx as nx
@@ -16,11 +16,25 @@ from collections import Counter
 connections.create_connection(hosts=['127.0.0.1'])
 
 # create elasticsearch object
-es = Elasticsearch(timeout=100, max_retries=10, retry_on_timeout=True, mapping_nested_objects_limit=15000)
+es = Elasticsearch(timeout=100, max_retries=100, retry_on_timeout=True, mapping_nested_objects_limit=15000)
 
 
+<<<<<<< HEAD
 entity_types = ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK']
 entity_types = set(entity_types)
+=======
+# data paths
+data_dir = '../data'
+metadata_path = '../data_extras/all_sources_metadata_2020-03-13.csv'
+ner_path = '../data_extras/CORD-NER-ner.json'
+meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
+
+# name of index
+index_name = 'another_covid_index'
+
+entity_types = {'GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK'}
+
+>>>>>>> 65a91f13b5a39e7ce1bb35ff724511da1cb5e66e
 
 
 # "text_analyzer" tokenizer splits at word boundaries, preserving internal hyphens.
@@ -61,7 +75,7 @@ class Article(Document):
     abstract = Text(analyzer=text_analyzer)
     body = Nested(Section)
     citations = Nested(Citation)            # citations field is a Nested list of Citation objects
-    pr = Long()
+    pr = Float(doc_values=True)
     cited_by = Nested(AnchorText)
     anchor_text = Text(analyzer='standard')
     ents = Text(analyzer=entity_analyzer)
@@ -141,7 +155,7 @@ def build_index():
             cits = [{"title": cit['title'], "year": cit['year'], "in_corpus": titles_to_ids[cit['title'].lower()],
                      "authors": [{"first": auth['first'], "last": auth["last"]} for auth in cit['authors']]} for cit in cits.values() if cit['title'] != '']
             authors = [{"first": auth['first'], "last": auth["last"]} for auth in article['metadata']['authors']]
-            pr = ddict[article['metadata']['title']]
+            pr = ddict[article['metadata']['title'].lower()]
             abstract = ' '.join([abs['text'] if 'text' in abs.keys() else '' for abs in article['abstract']]) if 'abstract' in article.keys() else ''
             anchor_text = ' '.join([cit['text'] for cit in anchor_text_dict[title.lower()]])
             section_dict = defaultdict(list)

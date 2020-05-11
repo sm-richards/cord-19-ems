@@ -80,10 +80,7 @@ def results(page):
             tmp_search_operator = search_operator
 
     else:  # request.method == 'GET':
-        if tmp_search_operator:
-            search_operator = tmp_search_operator
-        if tmp_ent:
-            ent = tmp_ent
+        search_operator = tmp_search_operator
         search_type = tmp_search_type
         text_query = tmp_text
         authors_query = tmp_authors
@@ -97,7 +94,7 @@ def results(page):
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)
     elif search_type == 'match_entity':
-        return more_like_this_ents(page, s, tmp_doc_id, single_ent=True, ent=ent)
+        return more_like_this_ents(page, s, tmp_doc_id, single_ent=True, ent=tmp_ent)
 
     # ---------------STANDARD SEARCH--------------- #
     shows = {'text': text_query, 'authors': authors_query, 'maxdate': maxdate_query, 'mindate': mindate_query,
@@ -121,6 +118,10 @@ def results(page):
     # if no query is passed in, return all documents
     else:
         s = s.query('match_all')
+        s = s.sort()
+        s = s.sort(
+            {"pr": {"order": "desc"}}
+        )
 
     # highlight
     s = s.highlight_options(pre_tags='<mark>', post_tags='</mark>')
@@ -271,16 +272,18 @@ def populate_results(response):
         if 'highlight' in hit.meta:
             result['title'] = hit.meta.highlight.title[0] if 'title' in hit.meta.highlight else hit.title
             result['abstract'] = hit.meta.highlight.abstract[0] if 'abstract' in hit.meta.highlight else hit.abstract
+
         else:
             result['title'] = hit.title
             result['abstract'] = hit.abstract
 
-        # get entities
+
+            # get entities
         article = Article.get(id=hit.meta.id, index=index_name)
         entlist = list(set(article['ents'].split()))  # remove duplicates
         result['entities_list'] = [{'query': ent, 'display': re.sub(r"_", " ", ent)} for ent in entlist]
         result['id'] = hit.meta.id
-
+        result['pr'] = hit.pr
         results[hit.meta.id] = result
 
     return results
