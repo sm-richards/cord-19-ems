@@ -302,7 +302,8 @@ def documents(res):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Startup and run query page for CORD-19 database")
-    parser.add_argument('index_name', help="Name of the index which you created when you ran index.py")
+    parser.add_argument('--index_name', help="Name of the index which you created when you ran index.py",
+                        default="another_covid_index")
     args = parser.parse_args()
     index_name = args.index_name
     app.run(debug=True)

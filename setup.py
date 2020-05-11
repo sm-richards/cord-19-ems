@@ -3,7 +3,7 @@ from setuptools import setup
 setup(name='cord_19_ems',
       version='1.0',
       author='Molly Moran, Samantha Richards, Emily Fountain',
-      packages=['cord_19_ems', 'cord_19_ems.notebooks', 'cord_19_ems.es_module'],
+      packages=['cord_19_ems', 'cord_19_ems.es_module'],
       description='',
       requirements=['certifi==2019.11.28',
                     'chardet==3.0.4',

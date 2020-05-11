@@ -7,6 +7,8 @@ authors: Samantha Richards, Molly Moran, Emily Fountain
 import functools, time, os, re, csv, jsonlines, json, pickle
 from collections import defaultdict
 from collections import Counter
+import networkx as nx
+import pandas as pd
 
 def timer(func):
     """ Creates a wrapper around functions so that, when 'timer' is called on them,
@@ -82,21 +84,24 @@ def untokenize(ent_list):
     else:
         return ""
 
-"""
-Get dataset in dict form and pickle.
-"""
+
 @timer
-def load_dataset_to_dict(data_dir):
+def load_dataset_to_dict(module_dir, data_dir):
+    """
+    Get dataset in dict form and pickle.
+    """
     articles = {}
     for dirname, subdirs, files in os.walk(data_dir):
         for file in files:
             if file != '.DS_Store':
                 with open(os.path.join(dirname, file), 'r') as f:
-                    text_data = json.load(f)
-                    articles[text_data['paper_id']] = text_data
+                    if file.endswith('.json'):
+                        text_data = json.load(f)
+                        articles[text_data['paper_id']] = text_data
 
-    with open('articles.p', 'wb') as f:
+    with open(os.path.join(module_dir, 'articles.p'), 'wb') as f:
         pickle.dump(articles, f)
+
 
 def filter_entities(entlist):
     filtered_ents = []
@@ -136,6 +141,10 @@ def get_anchor_text(articles, titles_to_ids):
 
 @timer
 def get_entity_counts(meta_ner_all):
+    """
+    This function takes in the metadata collection and returns a dictionary of counts
+    of those entities in the database.
+    """
     ent_freqs = defaultdict(int)
     for sha, info in meta_ner_all.items():
         ent_types = info['entities']  # {GENE: [ent1, ent2], GPE: [ent1, ent2], ...}
@@ -144,6 +153,46 @@ def get_entity_counts(meta_ner_all):
             meta_ner_all[sha]['entities'][type] = entlist  # also update original dict with cleaned entities
             for ent, count in Counter(entlist).items():
                 ent_freqs[ent] += count
-    if not os.path.exists('entity_counts.p'):
-        with open('entity_counts.p', 'wb') as f:
-            pickle.dump(ent_freqs.f)
+    return ent_freqs
+
+
+def generate_citation_graph(data_path, es_module_dir):
+    """
+    Generates a networkx graph of citations in the COVID-19 corpus, based
+    on citation titles.
+
+    :param data_path: path to a folder of .json files in the non-comm-use Kaggle dataset.
+    :return: networkx DiGraph object representing citation relationships in the dataset.
+    """
+    # Keep track of titles corresponding to articles in the corpus, and their corresponding paper IDs
+    titles_to_ids = defaultdict(int)
+
+    refdict = defaultdict(list)
+    i = 0
+    for dir, subdir, files in os.walk(data_path):
+        for file in files:
+            try:
+                with open(os.path.join(dir, file), 'r') as f:
+                    data = json.load(f)
+                    reftitle = data['metadata']['title'].lower()
+                    titles_to_ids[reftitle] = i
+                    # Each entry in "bib_entries" for a given article is named "BIB01", "BIB02", etc... and is the key
+                    # to a dictionary of values corresponding to identifying data for the particular citation.
+                    for bib in data['bib_entries'].values():
+                        title = bib['title'].lower()
+                        if title != '':
+                            refdict[reftitle].append(title)
+            except UnicodeDecodeError:
+                continue
+
+    # Code adapted from https://www.kaggle.com/baptistemetge/simple-citation-network-and-pagerank-score
+    # Create a Pandas dataframe from the citation data, and a networkx graph from the dataframe
+
+    citations = [{"title": ref, "citation": citation} for ref in refdict for citation in refdict[ref]]
+    citations = pd.DataFrame(citations)
+    graph = nx.from_pandas_edgelist(citations, source='title', target='citation', create_using=nx.DiGraph)
+
+    with open(os.path.join(es_module_dir, 'graph.p'), 'wb') as f:
+        pickle.dump(graph, f)
+
+    return graph
