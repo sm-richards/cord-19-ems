@@ -1,5 +1,8 @@
-"""
+"""query.py
 This module implements query interface for an elasticsearch index of the Kaggle CORD-19-EMS Dataset.
+project: CORD-19 COSI134A FINAL PROJECT
+date: May 2020
+authors: Samantha Richards, Molly Moran, Emily Fountain
 """
 
 from flask import *

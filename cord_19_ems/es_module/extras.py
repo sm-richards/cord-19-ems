@@ -1,12 +1,11 @@
-import functools
-import time
-import os
-import re
-import csv
+"""extras.py
+This module contains helper functions for index.py
+project: CORD-19 COSI134A FINAL PROJECT
+date: May 2020
+authors: Samantha Richards, Molly Moran, Emily Fountain
+"""
+import functools, time, os, re, csv, jsonlines, json, pickle
 from collections import defaultdict
-import jsonlines
-import json
-import pickle
 from collections import Counter
 
 def timer(func):
@@ -22,8 +21,11 @@ def timer(func):
         return f_value
 
     return wrapper_timer
-
-# create a dict mapping sha's to entities and other metadata for all sources
+"""
+Creates a dict mapping sha's to entities and other metadata for all sources.
+Since we index by sha's, and not all our data sources are based on sha's, we need
+to manually cross reference all our data.
+"""
 @timer
 def all_ner_metadata_cross_reference(metadata_csv, ner_json, out):
     # open json, get ents for each paper by doc_ids
@@ -80,6 +82,9 @@ def untokenize(ent_list):
     else:
         return ""
 
+"""
+Get dataset in dict form and pickle.
+"""
 @timer
 def load_dataset_to_dict(data_dir):
     articles = {}

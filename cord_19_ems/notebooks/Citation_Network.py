@@ -1,7 +1,13 @@
-""" Building a traversable directed graph of citations in the Non-Commercial Subset.
+"""Citation_Network.py
+Building a traversable directed graph of citations in the Non-Commercial Subset.
 
 See https://networkx.github.io/documentation/networkx-2.0/index.html for documentation on
-how to use DiGraph objects in networkx. """
+how to use DiGraph objects in networkx.
+project: CORD-19 COSI134A FINAL PROJECT
+date: May 2020
+authors: Samantha Richards, Molly Moran, Emily Fountain
+
+"""
 
 import json, argparse, os
 from collections import defaultdict

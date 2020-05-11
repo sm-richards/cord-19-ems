@@ -1,3 +1,10 @@
+"""index.py
+The module sets up the data and creates the final index for the CORD-19 dataset.
+project: CORD-19 COSI134A FINAL PROJECT
+date: May 2020
+authors: Samantha Richards, Molly Moran, Emily Fountain
+"""
+
 from __future__ import absolute_import
 import json, time, os, pickle, argparse, langid
 from elasticsearch import Elasticsearch
@@ -19,22 +26,11 @@ connections.create_connection(hosts=['127.0.0.1'])
 es = Elasticsearch(timeout=100, max_retries=100, retry_on_timeout=True, mapping_nested_objects_limit=15000)
 
 
-<<<<<<< HEAD
-entity_types = ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK']
+entity_types = ['GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME',
+'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM',
+'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT',
+'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK']
 entity_types = set(entity_types)
-=======
-# data paths
-data_dir = '../data'
-metadata_path = '../data_extras/all_sources_metadata_2020-03-13.csv'
-ner_path = '../data_extras/CORD-NER-ner.json'
-meta_ner_path = '../data_extras/cross_ref_data_all_sources.json'
-
-# name of index
-index_name = 'another_covid_index'
-
-entity_types = {'GPE', 'BACTERIUM', 'LOC', 'TISSUE', 'GENE_OR_GENOME', 'IMMUNE_RESPONSE', 'VIRAL_PROTEIN', 'CELL_OR_MOLECULAR_DYSFUNCTION', 'ORGANISM', 'CELL_FUNCTION','DISEASE_OR_SYNDROME', 'MOLECULAR_FUNCTION', 'CELL_COMPONENT', 'WILDLIFE', 'VIRUS','SIGN_OR_SYMPTOM', 'LIVESTOCK'}
-
->>>>>>> 65a91f13b5a39e7ce1bb35ff724511da1cb5e66e
 
 
 # "text_analyzer" tokenizer splits at word boundaries, preserving internal hyphens.
@@ -192,6 +188,10 @@ def build_index():
 
     helpers.bulk(es, actions(), raise_on_error=True)  # one doc in corpus contains a NAN value and it has to be ignored.
 
+"""
+This function takes in the metadata collection and returns a dictionary of counts
+of those entities in the database.
+"""
 @timer
 def get_entity_counts(ent_freqs, meta_ner_all):
     for sha, info in meta_ner_all.items():
