@@ -48,7 +48,7 @@ def results(page):
     if type(page) is not int:
         page = int(page.encode('utf-8'))
 
-    # initialize variables differently depending on whether method is GET or POST --------------------------------------
+    # initialize variables differently depending on whether method is GET or POST
     if request.method == 'POST':
         search_type = request.form['type']  # 'more_like_this' or 'search'
         tmp_search_type = search_type
@@ -91,11 +91,14 @@ def results(page):
         maxdate_query = tmp_max if tmp_max < 99999 else ""
         lang_query = tmp_lang
 
-    # Search type is either MORE LIKE THIS or STANDARD SEARCH-----------------------------------------------------------
+    # ---------------NON-STANDARD SEARCH TYPES--------------- #
+    # find me papers with similar citations
     if search_type == 'more_like_this_citations':
         return more_like_this(page, s, tmp_doc_id)
+    # find me papers with similar entities
     elif search_type == 'more_like_this_entities':
         return more_like_this_ents(page, s, tmp_doc_id)
+    # find me papers containing this specific entity
     elif search_type == 'match_entity':
         return more_like_this_ents(page, s, tmp_doc_id, single_ent=True, ent=tmp_ent)
 
@@ -105,20 +108,22 @@ def results(page):
 
     # match language
     if lang_query == True:
-        s = s.query('match', in_english=lang_query)
+        s = s.filter('match', in_english=lang_query)
 
-    # match publish time
-    s = s.query('range', publish_time={'gte': mindate_query, 'lte': maxdate_query})
+    # publish time filter
+    s = s.filter('range', publish_time={'gte': mindate_query, 'lte': maxdate_query})
 
     # free text search
     if len(text_query) > 0:
         s = s.query('multi_match', query=text_query, type='cross_fields',
                 fields=['title', 'abstract', 'body_text', 'anchor_text'], operator=search_operator)
 
-    # authors search
+    # authors filter
     if len(authors_query) > 0:
         s = filter_for_authors(authors_query, s)
-    # if no query is passed in, return all documents
+
+    # if no query is passed in, return all documents and
+    # return in descending order of pagerank scores
     else:
         s = s.query('match_all')
         s = s.sort()
@@ -164,9 +169,11 @@ def more_like_this_ents(page, s, doc_id, single_ent=False, ent=None):
     article = Article.get(id=doc_id, index=index_name)
     title = article['title']
 
-    # execute a query for articles containing matching entities
+    # find pages containing a single specific entity
     if single_ent:
         s = s.query('multi_match', query=ent, fields=['ents'], operator='and', type='cross_fields')
+
+    # find pages containing similar entities to doc_id
     else:
         q = Q("more_like_this", fields=["ents"], like=[{"_index": index_name, "_id": doc_id}], min_term_freq=1)
         s = s.query(q)
@@ -202,9 +209,10 @@ def more_like_this(page, s, doc_id):
     title = article['title']
 
     # grab a list of citation titles for this article, for comparison
-    citations = set([citation['title'] for citation in article['citations']])
+    citations = set([citation['title'].lower() for citation in article['citations']])
 
     # execute a query for articles containing matching citations
+
     q = Q('bool',
           should=[{"match_phrase": {'citations.title': citation} for citation in citations}],
           minimum_should_match=1)
@@ -220,14 +228,18 @@ def more_like_this(page, s, doc_id):
 
     # get data for each hit, to display on results page
     results = populate_results(response)
+
     if doc_id in results.keys():
         del results[doc_id]
+
 
     # calculate percentage citation overlap between each result article and reference article
     # use this to display on the page
     get_citation_overlap_scores(citations, results)
 
     # make the result list available globally
+    results =  [results[i] for i in results if results[i]['overlap'] !=0]
+    gresults = results
 
     # get the total number of matching results
     return render_template('more_like_this.html', results=results, doc_id=doc_id, title=title,
@@ -235,12 +247,13 @@ def more_like_this(page, s, doc_id):
 
 
 def get_citation_overlap_scores(citations, results):
-    """ Finds percentage overlap in citations between two documents.
+    """ Finds overlapping citations between two documents.
     Used for display on 'more like this' page. """
     for i in results:
         result = results[i]
-        hit_citations = set([citation['title'] for citation in result['citations']])
-        overlap = len(citations.intersection(hit_citations)) / len(citations)
+        hit_citations = set([citation['title'].lower() for citation in result['citations']])
+        overlap = len(citations.intersection(hit_citations))
+        print(overlap)
         result['overlap'] = overlap
 
 

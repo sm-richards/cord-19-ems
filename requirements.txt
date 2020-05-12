@@ -15,6 +15,7 @@ mkl-random==1.1.0
 mkl-service==2.3.0
 nltk==3.4.5
 numpy==1.18.1
+pandas
 pycurl==7.43.0.4
 python-dateutil==2.8.1
 requests==2.22.0
