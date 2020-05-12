@@ -195,7 +195,7 @@ def main():
         utils.generate_citation_graph(args.data_dir_path, args.module_dir_path)
     # if the dict of articles has not been created, do so
     if not os.path.exists(os.path.join(args.module_dir_path, 'articles.p')):
-        utils.load_dataset_to_dict(args.data_dir)
+        utils.load_dataset_to_dict(args.module_dir_path, args.data_dir_path)
     # build index
     build_index()
 
